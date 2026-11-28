@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import date
-import json,re,secrets,threading,time,hashlib
+import json,re,secrets,threading,time,hashlib,os
 import requests
 from app_paths import data_root,model_url
 from backend import Services,write_json
@@ -20,6 +20,10 @@ class Runtime:
                     if 'keyword_choices' not in c:c['keyword_choices']=getattr(self,'grounded_keywords',[''])
                     return super().ask(history,feedback,c)
             self.assistant=Assistant(self.root/'sessions'/'live',date.today(),42)
+            self.vision_search=None
+            if os.environ.get('MARVOI_MODEL_PROFILE')=='gemma4-e2b-vision':
+                from vision_search import VisionSearch
+                self.vision_search=VisionSearch()
             self.assistant.task.planner=GroundedPlanner(self.root/'sessions'/'task.requests.jsonl',42,date.today());self.ready=True
         except BaseException as e:self.error=str(e);self.services.stop()
     def call_start(self):
@@ -58,6 +62,13 @@ class Runtime:
         if normalized in ['取消','取消操作','不要執行','先不要動','先取消']:
             if task.pending:return dict(task.cancel(task.pending['id']),mode='task')
             return {'status':'cancelled','mode':'task','text':'沒有待確認的操作。'}
+        from vision_search import is_visual_search
+        if is_visual_search(text):
+            if not self.vision_search:return {'status':'clarify','mode':'task','text':'圖片內容搜尋需要 Gemma 4 E2B 視覺版；目前使用的是文字模型。','preserve_pending':True}
+            if paths_in(text) or re.search(r'本週|這週|上週|下週|今天|昨天|上個月|本月|日期|20\d{2}|\d{1,2}月\d{1,2}',text):
+                return {'status':'clarify','mode':'task','text':'視覺實驗版僅搜尋已匯入圖片，不支援路徑或日期複合條件；請先匯入指定素材。','preserve_pending':True}
+            if task.pending:task.cancel(task.pending['id'])
+            return self.vision_search.search(text,task.catalog(),task.checked)
         spec=analyze(text,date.today(),paths_in(text))
         if spec['actions'] is None:return {'status':'clarify','mode':'task','text':'請說要做的素材任務。','preserve_pending':True}
         user=text if spec['resource'] else 'materials：'+text

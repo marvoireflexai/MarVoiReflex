@@ -33,19 +33,28 @@ class Services:
             for n in ['logs','workspace/materials','ops','home','sessions']:(self.root/n).mkdir(parents=True,exist_ok=True)
             material=self.root/'workspace'/'materials'
             if material.is_symlink() or material.is_junction():raise RuntimeError('素材工作區不可是連結')
-            status('正在檢查本機模型…');model=self.assets/'models'/'MiniCPM5-2B-Q4_K_M.gguf'
+            status('正在檢查本機模型…');gemma=os.environ.get('MARVOI_MODEL_PROFILE')=='gemma4-e2b-vision';projector=None;expected=MODEL_SHA
+            runtime=self.assets/'runtime'/'llama-server.exe'
+            model=self.assets/'models'/'MiniCPM5-2B-Q4_K_M.gguf'
+            if gemma:
+                g=Path(os.environ.get('MARVOI_GEMMA_ROOT',str(self.assets/'gemma4-e2b'))).resolve()
+                model=g/'gemma-4-E2B_q4_0-it.gguf';projector=g/'gemma-4-E2B-it-mmproj.gguf';runtime=g/'runtime'/'llama-server.exe'
+                expected='fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634'
+                with projector.open('rb') as f:projector_hash=hashlib.file_digest(f,'sha256').hexdigest()
+                if projector_hash!='021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14':raise RuntimeError('Gemma 視覺權重校驗失敗。')
             with model.open('rb') as f:actual=hashlib.file_digest(f,'sha256').hexdigest()
-            if actual!=MODEL_SHA:raise RuntimeError('模型檔不完整，請重新解壓完整 App 資料夾。')
+            if actual!=expected:raise RuntimeError('模型檔不完整，請重新解壓完整 App 資料夾。')
             model_port=free_port();bridge_port=free_port()
             while bridge_port==model_port:bridge_port=free_port()
             os.environ['CROSSGEN_MODEL_URL']=f'http://127.0.0.1:{model_port}';os.environ['CROSSGEN_BRIDGE_URL']=f'http://127.0.0.1:{bridge_port}'
-            runtime=self.assets/'runtime'/'llama-server.exe';node=self.assets/'node'/'node.exe'
+            node=self.assets/'node'/'node.exe'
             cfg=self.root/'home'/'.claude-server-commander'/'config.json'
             write_json(cfg,{'allowedDirectories':[str(material)],'telemetryEnabled':False,'pendingWelcomeOnboarding':False,'welcomeOnboardingEligible':False,'defaultShell':'cmd.exe','fileReadLineLimit':1000,'fileWriteLineLimit':50,'blockedCommands':['format','diskpart','shutdown','reboot','netsh','reg','del','rmdir']})
             env=dict(os.environ,USERPROFILE=str(self.root/'home'),HOME=str(self.root/'home'),APPDATA=str(self.root/'home'/'AppData'/'Roaming'),LOCALAPPDATA=str(self.root/'home'/'AppData'/'Local'),TEMP=str(self.root/'temp'),TMP=str(self.root/'temp'),DESKTOP_COMMANDER_DISABLE_TELEMETRY='1',CUDA_VISIBLE_DEVICES='-1',ROCR_VISIBLE_DEVICES='',GGML_VK_VISIBLE_DEVICES='',GGML_BACKEND_PATH=str(runtime.parent),GGML_BACKEND_DL_PATH=str(runtime.parent))
             (self.root/'temp').mkdir(exist_ok=True)
             self.job=Job();status('正在載入 CPU 模型與素材工具…')
             args=[str(runtime),'-m',str(model),'--host','127.0.0.1','--port',str(model_port),'--device','none','--gpu-layers','0','--no-op-offload','--threads','4','--threads-batch','4','--ctx-size','4096','--batch-size','512','--ubatch-size','128','--parallel','1','--no-context-shift','--jinja','--reasoning','off','--chat-template-kwargs','{"enable_thinking":false}','--cache-ram','512','--offline']
+            if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens','280']
             try:
                 for name,cmd in [('model',args),('mcp',[str(node),str(self.assets/'bridge.mjs'),str(self.assets),str(self.root),str(bridge_port)])]:
                     with (self.root/'logs'/(name+'.log')).open('ab') as log:p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,cwd=self.root,env=env,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)

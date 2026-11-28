@@ -10,6 +10,10 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 開發目標為 **Windows、CPU、8GB 記憶體、無獨顯**。目前已於 31.76GiB 記憶體主機完成 CPU 模式的特定技術檢查，8GB 實機驗證列於後續測試規劃。
 
+## E2B 圖片搜尋實驗
+
+此分支加入 Gemma 4 E2B 圖片內容搜尋原始碼，尚未重新打包 Windows EXE。詳見 [實驗說明](docs/vision-preview.md)。
+
 ## 下載與啟動
 
 **[下載 Windows 自動下載工具（CMD）](https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031/MarVoiReflex-Download-Windows.cmd)** ／ [發行頁面與手動下載](https://github.com/yo20ywork-max/MarVoiReflex/releases/tag/v0.1.0-preview-20261031)

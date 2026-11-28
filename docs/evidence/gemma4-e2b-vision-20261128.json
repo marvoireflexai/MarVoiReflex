@@ -1,0 +1,41 @@
+[
+  {
+    "query": "找出有汽車的照片",
+    "expected": [
+      "red_bottle.jpg"
+    ],
+    "selected": [
+      "red_bottle.jpg"
+    ],
+    "uncertain": [],
+    "errors": [],
+    "seconds": 7.88,
+    "pass": true
+  },
+  {
+    "query": "找出紅色背景的素材",
+    "expected": [
+      "blue_car.jpg"
+    ],
+    "selected": [
+      "blue_car.jpg"
+    ],
+    "uncertain": [],
+    "errors": [],
+    "seconds": 7.81,
+    "pass": true
+  },
+  {
+    "query": "找出有黃色花朵的圖片",
+    "expected": [
+      "IMG_0003.jpg"
+    ],
+    "selected": [
+      "IMG_0003.jpg"
+    ],
+    "uncertain": [],
+    "errors": [],
+    "seconds": 8.02,
+    "pass": true
+  }
+]

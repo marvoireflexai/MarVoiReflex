@@ -8,3 +8,4 @@ requests==2.34.2
 pywin32==311
 pywebview==6.2.1
 pythonnet==3.2.1
+Pillow>=10,<13
