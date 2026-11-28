@@ -62,6 +62,8 @@ $('localNext').onclick=async()=>{
   finally{taskBusy=false;syncTextControls();$('localNext').disabled=false;}
 };
 let filePreviewUrl=null;
+const cardPreviewUrls=new WeakMap();
+const cardPreviewObserver=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const image=entry.target;cardPreviewObserver.unobserve(image);const asset=cardPreviewUrls.get(image);if(!asset)continue;resultFile(asset,'thumbnail').then(blob=>{if(!image.isConnected)return;const reader=new FileReader();reader.onload=()=>{if(image.isConnected){image.src=reader.result;image.hidden=false;}};reader.readAsDataURL(blob);}).catch(()=>{image.hidden=true;});}}, {rootMargin:'40px'});
 function clearFilePreview(){
   if(filePreviewUrl){URL.revokeObjectURL(filePreviewUrl);filePreviewUrl=null;}
   $('localPreview').replaceChildren();$('localPreview').hidden=true;
@@ -91,6 +93,12 @@ function renderFileCards(rows,host){
     if(asset.image_preview)add('圖片預覽',async()=>{const blob=await resultFile(asset,'thumbnail');if(!row.isConnected)return;clearFilePreview();filePreviewUrl=URL.createObjectURL(blob);const dialog=$('resultPreviewDialog');const image=$('resultPreviewImage');image.src=filePreviewUrl;image.alt=asset.name;image.hidden=false;$('resultPreviewText').hidden=true;$('resultPreviewTitle').textContent=asset.name;if(!dialog.open)dialog.showModal();},'ghost');
     if(asset.previewable)add('文字預覽',async()=>{const v=await resultFile(asset,'text');if(!row.isConnected)return;clearFilePreview();$('resultPreviewTitle').textContent=v.name;$('resultPreviewImage').hidden=true;$('resultPreviewText').textContent=v.text;$('resultPreviewText').hidden=false;if(!$('resultPreviewDialog').open)$('resultPreviewDialog').showModal();},'ghost');
     if(asset.source==='local')add('所在資料夾',()=>api('/api/local/reveal',{id:asset.id}),'ghost');
+    if(asset.image_preview){
+      const image=document.createElement('img');image.className='result-thumb';image.alt=asset.name;image.hidden=false;
+      row.append(image);cardPreviewUrls.set(image,asset);cardPreviewObserver.observe(image);
+    }else{
+      const mark=document.createElement('div');mark.className='result-type';mark.textContent=(asset.name.split('.').pop()||'FILE').toUpperCase();row.append(mark);
+    }
     body.append(name,path,reason,actions);row.append(body);host.append(row);
   }
   host.hidden=!rows.length;
@@ -232,7 +240,7 @@ sendChat=async function(){const input=$('chatInput'),text=input.value.trim();if(
   if(!liveReady){message('assistant',loadingText);return;}
   if(taskBusy){message('assistant','目前正在處理任務，請等結果完成後再送出。');return;}
   voiceRuntime.textBusy=true;syncTextControls();
-  try{const v=await api('/api/text',{mode:'chat',text});message('user',text);message('assistant',v.result.text);if(input.value.trim()===text)input.value='';}
+  try{const v=await api('/api/text',{mode:'chat',text});message('user',text);message('assistant',v.result.text);if(v.result.mode==='task'){applyTask(v.result);setMode('task');}if(input.value.trim()===text)input.value='';}
   catch(e){message('assistant',e.message==='BUSY'?'目前正在處理其他請求，文字已保留，請稍後重試。':shortError(e));}
   finally{voiceRuntime.textBusy=false;syncTextControls();}
 };
@@ -290,6 +298,12 @@ async function initialize(){
     catch(e){loadingText='正在等待本機服務：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;await new Promise(r=>setTimeout(r,1000));continue;}
     if(status.error)throw new Error(status.error);
     loadingText=status.phase||'正在準備本機模型…';
+    if(status.presentation){
+      $('localTitle').textContent='成果展示 · 合成素材';
+      $('localScopeNote').textContent='獨立展示環境，只包含六個合成檔案。搜尋與模型推論均真實執行，不讀取個人磁碟。';
+      $('localDrives').hidden=true;
+      document.documentElement.dataset.presentation='true';
+    }
     if(status.ready){
       liveReady=true;C.zh.ready='就緒';C.en.ready='Ready';C.zh.label='本機';C.en.label='Local';$('open').disabled=false;copy();syncTextControls();
       if($('taskInput').value.trim())showTaskStatus('模型已就緒，任務文字已保留，請送出。');

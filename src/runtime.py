@@ -10,9 +10,15 @@ from local_files import LocalFiles,wants_search,workspace_request,blocked_reques
 from result_files import ResultFiles,capabilities
 
 class Runtime:
-    def __init__(self):
+    def __init__(self,presentation_files=None):
+        self.presentation=presentation_files is not None
         self.root=data_root();self.root.mkdir(parents=True,exist_ok=True);self.services=Services();self.voice=VoiceEngine();self.ready=False;self.error=None;self.phase='正在準備本機模型…';self.op_lock=threading.RLock();self.state_lock=threading.RLock();self.call_id=None;self.generation=0;self.speech_chunks=None;self.speech_lock=threading.RLock();self.chat_history=[];self.close_timer=None;self.client_attached=False
-        self.local_files=LocalFiles(self.root,excluded=(bundle_root(),));self.local_vision=None;self.result_files=ResultFiles(self.root,self.local_files)
+        if self.presentation:
+            from presentation import roots_for
+            self.local_files=LocalFiles(self.root,excluded=(bundle_root(),),discover=lambda mode:roots_for(presentation_files),presentation=True)
+            self.local_files.set_scope('personal')
+        else:self.local_files=LocalFiles(self.root,excluded=(bundle_root(),))
+        self.local_vision=None;self.result_files=ResultFiles(self.root,self.local_files)
     def start(self):
         try:
             self.services.start(lambda phase:setattr(self,'phase',phase))
@@ -72,6 +78,11 @@ class Runtime:
         from semantics import analyze
         task=self.assistant.task;task.clock=date.today();task.planner.clock=date.today()
         normalized=re.sub(r'[，。！？!?,\s]+$','',text).strip()
+        # Normalize only unambiguous colloquial list requests, not model-generated actions.
+        if re.fullmatch(r'我有(?:哪些|哪幾個|哪幾張|什麼)(?:圖片|照片|文案|檔案|素材|文件)(?:素材)?',normalized):
+            text='列出全部'+re.sub(r'^我有(?:哪些|哪幾個|哪幾張|什麼)','',normalized).removesuffix('素材') if not normalized.endswith('什麼素材') else '列出全部素材'
+            if text=='列出全部':text='列出全部素材'
+            normalized=text
         if re.fullmatch(r'(?:好|好啊|好的|是|同意|確認|確定|直接搬|執行|開始執行|確認執行|確認搬移)+',normalized):
             return {'status':'clarify','mode':'task','text':'請在畫面按確認，才會搬動檔案。','preserve_pending':True}
         if normalized in ['取消','取消操作','不要執行','先不要動','先取消']:
@@ -145,6 +156,7 @@ class Runtime:
             return result
         except (ValueError,PermissionError) as exc:return {'status':'clarify','mode':'task','text':str(exc),'preserve_pending':True}
     def set_local_scope(self,mode):
+        if self.presentation and mode=='drives':raise PermissionError('展示模式僅限合成素材。')
         result=self.local_files.set_scope(mode)
         if self.local_vision:
             from vision_search import VisionSearch
@@ -201,8 +213,9 @@ class Runtime:
     @staticmethod
     def is_voice_task(text):
         # Chat can route explicit file commands; questions about how to work stay in chat.
-        if re.search(r'怎麼|如何|為什麼|什麼意思|是否可以|能不能|可以嗎|教我',text):return False
+        if re.search(r'怎麼|如何|為什麼|什麼意思|教我',text):return False
         if text.strip().rstrip('。！!') in ('繼續搜尋','繼續搜尋下一批','搜尋下一批','下一批'):return True
+        if re.search(r'^我(?:有|的).*(?:哪些|哪幾|什麼).*(?:圖片|照片|文件|文案|檔案|素材)',text):return True
         return bool(re.search(r'^(?:(?:請|麻煩|幫我|可以幫我)\s*)*(?:找出|找一下|找找|找|搜尋|搜索|尋找|查找|列出|讀取|讀出|查看|整理|分類|預覽|搬移|移動|複製|刪除|改名)',text.strip()) and re.search(r'檔案|文件|資料夾|素材|圖片|照片|相片|圖檔|文案|桌面|下載|電腦|磁碟|PDF|TXT|\.\w{2,5}\b',text,re.I))
     def turn(self,content,mode,call_id):
         if mode not in ['chat','task']:raise ValueError('請選擇聊天或交辦。')
@@ -239,7 +252,7 @@ class Runtime:
     def text(self,mode,text):
         if not self.ready:raise RuntimeError(self.error or '助理仍在啟動。')
         if not self.op_lock.acquire(blocking=False):raise RuntimeError('BUSY')
-        try:return self.chat(text) if mode=='chat' else self.task(text)
+        try:return self.chat(text) if mode=='chat' and not self.is_voice_task(text) else self.task(text)
         finally:self.op_lock.release()
     def control(self,action,plan_id,call_id=None):
         if action not in ['confirm','cancel']:raise ValueError('未知操作。')

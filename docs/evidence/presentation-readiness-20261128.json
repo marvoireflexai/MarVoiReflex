@@ -1,0 +1,369 @@
+{
+  "source": {
+    "mode": "source",
+    "cases": [
+      {
+        "id": "P01",
+        "instruction": "找出全部圖片",
+        "expected": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.028
+      },
+      {
+        "id": "P02",
+        "instruction": "我有哪些圖片素材？",
+        "expected": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.033
+      },
+      {
+        "id": "P03",
+        "instruction": "幫我找昨天下載的 PDF",
+        "expected": [
+          "春季活動_提案.pdf"
+        ],
+        "actual": [
+          "春季活動_提案.pdf"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.007
+      },
+      {
+        "id": "P04",
+        "instruction": "找出檔名包含「春季活動」的檔案",
+        "expected": [
+          "春季活動_成效.csv",
+          "春季活動_提案.pdf",
+          "春季活動_社群文案.txt"
+        ],
+        "actual": [
+          "春季活動_成效.csv",
+          "春季活動_提案.pdf",
+          "春季活動_社群文案.txt"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.025
+      },
+      {
+        "id": "P05",
+        "instruction": "搜尋檔名包含「不存在」的檔案",
+        "expected": [],
+        "actual": [],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.003
+      },
+      {
+        "id": "P06",
+        "instruction": "列出全部文件資料夾的 CSV",
+        "expected": [
+          "春季活動_成效.csv"
+        ],
+        "actual": [
+          "春季活動_成效.csv"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.005
+      },
+      {
+        "id": "P07",
+        "instruction": "幫我找汽車的照片",
+        "expected": [
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 19.7
+      },
+      {
+        "id": "P08",
+        "instruction": "找出紅色背景的圖片",
+        "expected": [
+          "IMG_0631.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 14.203
+      },
+      {
+        "id": "P09",
+        "instruction": "找出有黃色花朵的圖片",
+        "expected": [
+          "IMG_0987.jpg"
+        ],
+        "actual": [
+          "IMG_0987.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 19.981
+      },
+      {
+        "id": "P10",
+        "instruction": "幫我找汽車的照片",
+        "expected": [
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 9.065
+      },
+      {
+        "id": "P11",
+        "instruction": "找出所有密碼檔案",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.02
+      },
+      {
+        "id": "P12",
+        "instruction": "整理全部圖片",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.004
+      },
+      {
+        "id": "P13",
+        "instruction": "找出 C:\\Windows\\System32 的檔案",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.004
+      },
+      {
+        "id": "P14",
+        "pass": true,
+        "instruction": "瀏覽器顯示縮圖並下載原始圖片"
+      }
+    ],
+    "synthetic_only": true,
+    "physical_8gb_tested": false,
+    "startup_seconds": 4.667,
+    "isolated_scope": true,
+    "scope_expansion_rejected": true,
+    "page_errors": [],
+    "original_files_unchanged": true,
+    "process_tree_rss_mib_snapshot": 3878.4
+  },
+  "packaged": {
+    "mode": "frozen",
+    "cases": [
+      {
+        "id": "P01",
+        "instruction": "找出全部圖片",
+        "expected": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.025
+      },
+      {
+        "id": "P02",
+        "instruction": "我有哪些圖片素材？",
+        "expected": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg",
+          "IMG_0987.jpg",
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.028
+      },
+      {
+        "id": "P03",
+        "instruction": "幫我找昨天下載的 PDF",
+        "expected": [
+          "春季活動_提案.pdf"
+        ],
+        "actual": [
+          "春季活動_提案.pdf"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.009
+      },
+      {
+        "id": "P04",
+        "instruction": "找出檔名包含「春季活動」的檔案",
+        "expected": [
+          "春季活動_成效.csv",
+          "春季活動_提案.pdf",
+          "春季活動_社群文案.txt"
+        ],
+        "actual": [
+          "春季活動_成效.csv",
+          "春季活動_提案.pdf",
+          "春季活動_社群文案.txt"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.024
+      },
+      {
+        "id": "P05",
+        "instruction": "搜尋檔名包含「不存在」的檔案",
+        "expected": [],
+        "actual": [],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.004
+      },
+      {
+        "id": "P06",
+        "instruction": "列出全部文件資料夾的 CSV",
+        "expected": [
+          "春季活動_成效.csv"
+        ],
+        "actual": [
+          "春季活動_成效.csv"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 0.024
+      },
+      {
+        "id": "P07",
+        "instruction": "幫我找汽車的照片",
+        "expected": [
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 19.768
+      },
+      {
+        "id": "P08",
+        "instruction": "找出紅色背景的圖片",
+        "expected": [
+          "IMG_0631.jpg"
+        ],
+        "actual": [
+          "IMG_0631.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 14.196
+      },
+      {
+        "id": "P09",
+        "instruction": "找出有黃色花朵的圖片",
+        "expected": [
+          "IMG_0987.jpg"
+        ],
+        "actual": [
+          "IMG_0987.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 19.255
+      },
+      {
+        "id": "P10",
+        "instruction": "幫我找汽車的照片",
+        "expected": [
+          "IMG_4128.jpg"
+        ],
+        "actual": [
+          "IMG_4128.jpg"
+        ],
+        "status": "searched",
+        "pass": true,
+        "seconds": 8.511
+      },
+      {
+        "id": "P11",
+        "instruction": "找出所有密碼檔案",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.016
+      },
+      {
+        "id": "P12",
+        "instruction": "整理全部圖片",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.015
+      },
+      {
+        "id": "P13",
+        "instruction": "找出 C:\\Windows\\System32 的檔案",
+        "status": "clarify",
+        "pass": true,
+        "seconds": 0.002
+      },
+      {
+        "id": "P14",
+        "pass": true,
+        "instruction": "瀏覽器顯示縮圖並下載原始圖片"
+      }
+    ],
+    "synthetic_only": true,
+    "physical_8gb_tested": false,
+    "startup_seconds": 4.697,
+    "isolated_scope": true,
+    "scope_expansion_rejected": true,
+    "page_errors": [],
+    "original_files_unchanged": true,
+    "process_tree_rss_mib_snapshot": 3882.1
+  },
+  "exe_sha256": "6ee6d6d7aba2a8f220b96ad20e3ab4d30e3f9f9d2809636961f58390bb096f6c",
+  "installer": {
+    "v0_3_1_short_path_update_pass": true,
+    "patched_files_verified": 4,
+    "existing_user_data_preserved": true
+  },
+  "limitations": [
+    "Synthetic six-file fixture set, 32GB Windows desktop",
+    "No real microphone or 8GB physical device tested in this run",
+    "RSS snapshot, not peak or complete system memory",
+    "14 supplemental cases do not replace the original 50 research cases",
+    "No human-subject time-savings or satisfaction data"
+  ]
+}

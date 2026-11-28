@@ -1,6 +1,6 @@
 # Windows 使用指南｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.1-direct-voice-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.1-direct-voice-20261128)
+**[下載 Windows 一鍵安裝／啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.2-presentation-20261128)
 
 此版本預設使用 Gemma 4 E2B IT QAT Q4_0 及視覺 projector。首次需下載 App、3.35 GB 語言權重和 0.99 GB 視覺權重，合計約 5.06 GB（含任務修正包）。模型由 Google 官方來源下載，校驗 SHA-256 後放置到正確位置。無需 GitHub 帳號、API Key、獨顯、另外安裝 Python 或 Node.js。
 
@@ -11,6 +11,10 @@
 5. 要依檔案類型整理時，輸入「整理全部圖片，先給我預覽」，核對計畫並按確認。
 
 語音任務辨識後自動處理；低信心時請使用者重說，搜尋結果直接顯示在通話畫面。工作區搬移仍須檢視預覽並按確認。圖片搜尋的複核結果不一致時會列為需確認。
+
+## 成果展示模式
+
+先完成新版安裝／更新並關閉原本 App，再執行 [成果展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Presentation.cmd)。每次建立獨立的合成素材 session，不讀取個人磁碟。詳細流程及驗收見[成果發表驗收計畫](presentation-readiness.md)。
 
 ## 免匯入本機搜尋
 
@@ -28,11 +32,11 @@
 
 ## 手動下載
 
-下方完整 ZIP 為 v0.2.0 基礎安裝包；建議優先使用 v0.3.1 一鍵工具，會自動套用修正並校驗。手動安裝基礎版後，若非標準安裝目錄，需將 v0.3.1 語音交辦更新包內 files/ 的 4 個檔案依原相對路徑套用；操作前先關閉 App、備份原始程式檔並核對 SHA-256，勿覆蓋使用者資料。
+下方完整 ZIP 為 v0.2.0 基礎安裝包；建議優先使用 v0.3.2 一鍵工具，會自動套用修正並校驗。手動安裝基礎版後，若非標準安裝目錄，需將 v0.3.2 成果展示更新包內 files/ 的 4 個檔案依原相對路徑套用；操作前先關閉 App、備份原始程式檔並核對 SHA-256，勿覆蓋使用者資料。
 
 1. 從 [基礎發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128) 下載 MarVoiReflex-Gemma4-E2B-Windows-x64.zip 並完整解壓。
 2. 從 [Google 官方 Gemma 4 E2B QAT GGUF](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf) 下載 gemma-4-E2B_q4_0-it.gguf 及 gemma-4-E2B-it-mmproj.gguf。
 3. 將兩個檔案放入 MarVoiReflex/assets/gemma4-e2b，保留 runtime 子資料夾及其他所有檔案。
 4. 雙擊 MarVoiReflex.exe。
 
-完整校驗碼、版本限制與驗證結果見[本次發行紀錄](releases/2026-11-28-direct-voice-files.md)。舊版 MiniCPM5-2B 僅作為[歷史版本](releases/2026-10-31.md)保留。
+完整校驗碼、版本限制與驗證結果見[本次發行紀錄](releases/2026-11-28-presentation.md)。舊版 MiniCPM5-2B 僅作為[歷史版本](releases/2026-10-31.md)保留。

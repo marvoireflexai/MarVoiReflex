@@ -183,6 +183,14 @@ html[data-shell=native] .window{border-radius:0}
 #resultPreviewImage{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}
 #resultPreviewImage[hidden],#resultPreviewText[hidden]{display:none}
 #resultPreviewText{max-width:76vw;max-height:70vh;white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere}
+
+.result-thumb,.result-type{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:12px;background:var(--tint);align-self:flex-start}
+.result-thumb[hidden]{display:none}
+.result-type{display:grid;place-items:center;font-size:11px;font-weight:650;color:var(--muted);letter-spacing:.04em}
+.result-file-card{align-items:flex-start}
+.result-file-card .file-detail{flex:1;min-width:0}
+[data-presentation=true] #localDrives{display:none!important}
+@media(max-width:480px){.result-thumb,.result-type{width:52px;height:52px;flex-basis:52px}}
 </style></head>
 <!-- Logo: 國立臺北大學 https://new.ntpu.edu.tw/assets/logo/ntpu.svg ; original SVG embedded without modification. -->
 <body>

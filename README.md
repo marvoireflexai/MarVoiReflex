@@ -12,7 +12,7 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 ## 下載與啟動｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.1-direct-voice-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.1-direct-voice-20261128)
+**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.2-presentation-20261128)
 
 目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.06 GB，請預留至少 12 GB 磁碟空間。
 
@@ -21,9 +21,11 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 3. 在任務模式匯入圖片，輸入「找出有汽車的照片」或「找出紅色背景的素材」。即使檔名無關，也能依圖片內容辨識。
 4. 使用「整理全部圖片，先給我預覽」進行分類，畫面確認後才搬移。
 
-支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28-direct-voice-files.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
+支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28-presentation.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
 
 **安裝工具 r2：** 修正 Windows 長路徑解壓相容性，新安裝採短路徑並沿用既有下載快取。
+
+**v0.3.2 更新：** 新增獨立成果展示模式、圖片縮圖及一般聊天的檔案任務路由；[展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Presentation.cmd)（需先安裝最新版）。[成果發表驗收計畫](docs/presentation-readiness.md)。
 
 **v0.3.1 更新：** 通話中的語音指令直接處理，不需再次送出；結果卡可開啟原檔、下載或預覽。改動工作區檔案仍須確認。
 

@@ -1,10 +1,14 @@
 # 系統展示與操作紀錄
 
+## v0.3.2 成果展示模式
+
+新版提供獨立合成素材 session、實際 CPU 圖片辨識、原始檔案下載與安全拒絕情境。啟動工具、驗收方法及發表流程見[成果發表驗收計畫](presentation-readiness.md)。以下影片為 2026-10-31 歷史版本，不代表目前介面或模型。
+
 ## 素材整理操作影片
 
 [![素材分類預覽](images/demo-material-preview.png)](demo/MarVoiReflex-Material-Task-20261031.mp4)
 
-[觀看 MP4](demo/MarVoiReflex-Material-Task-20261031.mp4)／[GitHub 影片下載](https://github.com/yo20ywork-max/MarVoiReflex/releases/tag/demo-20261031)／[檔案核對紀錄](evidence/demo-material-task-20261031.json)
+[觀看 MP4](demo/MarVoiReflex-Material-Task-20261031.mp4)／[GitHub 影片下載](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/demo-20261031)／[檔案核對紀錄](evidence/demo-material-task-20261031.json)
 
 錄製日期：2026-10-31。使用實際 Windows 桌面版 App、MiniCPM5-2B Q4_K_M CPU 推論與安全控制器，從介面載入四份合成素材，再以文字輸入「整理本週的圖片與文案，先給我預覽。」
 

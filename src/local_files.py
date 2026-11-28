@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 IMAGE={'.jpg','.jpeg','.png','.webp'}
 EXT=IMAGE|{'.gif','.bmp','.tif','.tiff','.svg','.heic','.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.txt','.md','.csv','.rtf','.odt','.ods','.odp','.psd','.ai','.indd','.fig','.mp4','.mov','.m4v','.avi','.mkv','.mp3','.wav','.m4a','.flac'}
-SKIP_DIR={'windows','program files','program files (x86)','programdata','system volume information','$recycle.bin','recovery','perflogs','documents and settings','appdata','application data','local settings','node_modules','__pycache__','data-marvoivoice','marvoireflex','windowsapps','msocache','users','profiles','cache','caches','browser','credentials','secrets','private keys'}
+SKIP_DIR={'windows','program files','program files (x86)','programdata','system volume information','$recycle.bin','recovery','perflogs','documents and settings','appdata','application data','local settings','node_modules','__pycache__','data-marvoivoice','marvoireflex','mvr-presentation','windowsapps','msocache','users','profiles','cache','caches','browser','credentials','secrets','private keys'}
 SECRET=re.compile(r'password|passwd|credential|secret|token|api[-_ ]?key|private[-_ ]?key|wallet|seed[-_ ]?phrase|密碼|憑證|金鑰|私鑰|助記詞',re.I)
 ATTR_SKIP=0x2|0x4|0x400|0x1000|0x40000|0x400000
 FOLDERS={'desktop':'桌面','downloads':'下載','documents':'文件','pictures':'圖片','videos':'影片','music':'音樂'}
@@ -75,7 +75,7 @@ def blocked_request(text):
     return bool(re.search(r'刪除|清空|覆寫|覆蓋|搬移|搬到|移動|移到|複製|拷貝|重新命名|改名|歸檔|歸類|分類|整理|備份|上傳|傳送|分享|執行|安裝|密碼|憑證|金鑰|私鑰|助記詞|cookie|credential|password|api[-_ ]?key|token|passwords',text,re.I))
 
 def wants_search(text):
-    return bool(re.search(r'搜尋|搜索|找出|幫我找|找一下|找找|尋找|列出|查找|^找|^查詢',text,re.I))
+    return bool(re.search(r'搜尋|搜索|找出|幫我找|找一下|找找|尋找|列出|查找|^找|^查詢|^我有(?:哪些|哪幾|什麼)',text,re.I))
 
 def workspace_request(text):
     return bool(re.search(r'\bmaterials\b|已匯入|匯入的|工作區|素材庫',text,re.I))
@@ -124,14 +124,15 @@ def parse_query(text,visual=False,clock=None):
             keyword=re.sub(r'所有|全部|電腦裡|電腦中|電腦內|整台電腦|本機|磁碟|資料夾|目錄|裡面|中的|最近|下載的|修改的|做過的|製作的|檔案|素材|圖片|照片|相片|圖檔|文件|文案|文字檔|簡報|投影片|試算表|表格|影片|影音|的|一下','',keyword)
             if ext:keyword=re.sub(r'(?<![A-Za-z])\.?'+re.escape(ext[1])+r'(?![A-Za-z])','',keyword,flags=re.I)
         keyword=keyword.strip(' ，。！？?!「」"')
+        if not quoted and not explicit_name:keyword=re.sub(r'(?:給我看|讓我看看|可以嗎|好嗎|嗎|呢)$','',keyword).strip()
     if keyword and len(keyword)>100:raise ValueError('請縮短檔名搜尋條件。')
     return {'keyword':keyword.casefold(),'extensions':extensions,'scope':scope,'drive':drive[1].upper()+':' if drive else None,'lo':lo,'hi':hi,'visual':visual,'query':text}
 
 class LocalFiles:
-    def __init__(self,root,excluded=(),discover=discover_roots,max_entries=500000,max_seconds=120):
+    def __init__(self,root,excluded=(),discover=discover_roots,max_entries=500000,max_seconds=120,presentation=False):
         self.root=Path(root)/'local-search';self.root.mkdir(parents=True,exist_ok=True)
         self.db=self.root/'files.sqlite3';self.settings=self.root/'consent.json'
-        self.discover=discover;self.excluded=tuple(Path(p).absolute() for p in (*excluded,root));self.max_entries=max_entries;self.max_seconds=max_seconds
+        self.discover=discover;self.presentation=presentation;self.excluded=tuple(Path(p).absolute() for p in (*excluded,root));self.max_entries=max_entries;self.max_seconds=max_seconds
         self.lock=threading.RLock();self.mode=None;self.roots=[];self.epoch=0;self.worker=None;self.state='disabled';self.count=0;self.skipped=0;self.last_scan=0;self.results={};self.last=None
         try:
             v=json.loads(self.settings.read_text(encoding='utf-8'))
@@ -193,7 +194,7 @@ class LocalFiles:
             roots=[]
             for p,k in self.discover(mode):
                 p=Path(p).absolute()
-                if plain_path(p) and not self._excluded(p) and safe_stat(p) and all(safe_stat(q,True) for q in p.parents) and all(normal_name(part,True) or part.casefold()=='users' for part in p.parts[1:]):
+                if plain_path(p) and not self._excluded(p) and safe_stat(p) and all(safe_stat(q,True) for q in p.parents) and all(normal_name(part,True) or part.casefold()=='users' or (self.presentation and part.casefold()=='mvr-presentation') for part in p.parts[1:]):
                     if not any(p==r for r,_ in roots):roots.append((p,k))
             if not roots:self.state='disabled';raise ValueError('沒有可使用的本機資料夾。')
             self.mode=mode;self.roots=roots

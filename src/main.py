@@ -4,8 +4,14 @@ os.environ.update(CUDA_VISIBLE_DEVICES='-1',ROCR_VISIBLE_DEVICES='',GGML_VK_VISI
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--atomic-move');ap.add_argument('--data-dir');ap.add_argument('--no-browser',action='store_true');ap.add_argument('--native',action='store_true');ap.add_argument('--port',type=int,default=0);ap.add_argument('--stop',action='store_true');args=ap.parse_args()
-    if args.data_dir:os.environ['CROSSGEN_DATA_DIR']=str(Path(args.data_dir).resolve())
+    ap=argparse.ArgumentParser();ap.add_argument('--atomic-move');ap.add_argument('--data-dir');ap.add_argument('--no-browser',action='store_true');ap.add_argument('--native',action='store_true');ap.add_argument('--port',type=int,default=0);ap.add_argument('--stop',action='store_true');ap.add_argument('--presentation',action='store_true');args=ap.parse_args()
+    presentation_files=None
+    if args.presentation:
+        if args.data_dir or args.atomic_move or args.stop:raise ValueError('Presentation mode requires a new isolated session')
+        from presentation import create_session
+        session_data,presentation_files=create_session()
+        os.environ['CROSSGEN_DATA_DIR']=str(session_data)
+    elif args.data_dir:os.environ['CROSSGEN_DATA_DIR']=str(Path(args.data_dir).resolve())
     from app_paths import data_root,bundle_root,web_root
     if args.atomic_move:
         from atomic_move import main as move
@@ -38,7 +44,7 @@ def main():
             os.startfile(state['url'])
         return
     from runtime import Runtime
-    runtime=Runtime();token=secrets.token_hex(24);web=web_root();browser_job=None;close_timer=None;native_shell=None
+    runtime=Runtime(presentation_files);token=secrets.token_hex(24);web=web_root();browser_job=None;close_timer=None;native_shell=None
     class Server(ThreadingHTTPServer):daemon_threads=True;allow_reuse_address=False
     class Handler(BaseHTTPRequestHandler):
         server_version='MarVoiReflex/0.2'
@@ -66,7 +72,7 @@ def main():
             if path in ['/live.js','/audio-worklet.js']:
                 p=web/path.lstrip('/');data=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.auth():self.fail(403,'Unauthorized');return
-            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
+            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'presentation':runtime.presentation,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
             if path=='/api/local/status':self.reply(200,runtime.local_files.status());return
             if path=='/api/assets':
                 try:
