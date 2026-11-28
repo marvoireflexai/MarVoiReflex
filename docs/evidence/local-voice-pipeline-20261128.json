@@ -1,0 +1,110 @@
+{
+  "source_pipeline": {
+    "passed": [
+      "actual_e4b_cpu_ready",
+      "app_ready_with_e2b_and_optional_e4b",
+      "real_e2b_e4b_routing",
+      "advanced_failure_falls_back_to_e2b",
+      "moonshine_ready",
+      "incremental_moonshine_transcription",
+      "three_dual_engine_task_reviews",
+      "silence_rejected",
+      "voice_audio_chunk_api",
+      "cancelled_audio_rejected",
+      "real_visual_search_and_cache"
+    ],
+    "speech_cases": [
+      {
+        "expected": "請找出有汽車的照片。",
+        "recognized": "請找出有汽車的照片。",
+        "engine": "moonshine+whisper",
+        "seconds": 6.721,
+        "status": "transcript_review"
+      },
+      {
+        "expected": "整理全部圖片，先給我預覽。",
+        "recognized": "整理全部圖片,先給我預覽。",
+        "engine": "moonshine+whisper",
+        "seconds": 5.321,
+        "status": "transcript_review"
+      },
+      {
+        "expected": "搜尋紅色背景的素材。",
+        "recognized": "搜尋紅色背景的素材。",
+        "engine": "moonshine+whisper",
+        "seconds": 5.251,
+        "status": "transcript_review"
+      }
+    ],
+    "limitations": [
+      "synthetic speech, not live microphone",
+      "source runtime, not new packaged EXE",
+      "32GB desktop"
+    ],
+    "partials": [
+      "盡照",
+      "請找出有汽車",
+      "請找出有汽車的照片"
+    ],
+    "speech_chunks": 2,
+    "vision_search_seconds": [
+      14.76,
+      6.352
+    ]
+  },
+  "moonshine_standalone": [
+    {
+      "expected": "請找出有汽車的照片。",
+      "recognized": "請找出有汽車的照片",
+      "seconds": 0.068,
+      "cer": 0.0
+    },
+    {
+      "expected": "整理全部圖片，先給我預覽。",
+      "recognized": "整理全部圖片先給我預覽",
+      "seconds": 0.049,
+      "cer": 0.0
+    },
+    {
+      "expected": "搜尋紅色背景的素材。",
+      "recognized": "搜尋紅色背景的素材",
+      "seconds": 0.041,
+      "cer": 0.0
+    }
+  ],
+  "semantic_index": {
+    "first": {
+      "status": "indexed",
+      "mode": "task",
+      "text": "素材索引：4/4 張已建立（本次新增 4 張；待處理 0 張）。OCR：啟用；向量：啟用。沒有搬移或修改原始素材。",
+      "indexed": 4,
+      "new": 4,
+      "remaining": 0,
+      "engines": {
+        "ocr": true,
+        "embedding": true
+      },
+      "errors": [],
+      "preserve_pending": true
+    },
+    "seconds": 18.525,
+    "ocr_sample": "春季優惠 SALE",
+    "vector_dimensions": 768,
+    "reindex": {
+      "status": "indexed",
+      "mode": "task",
+      "text": "素材索引：4/4 張已建立（本次新增 0 張；待處理 0 張）。OCR：啟用；向量：啟用。沒有搬移或修改原始素材。",
+      "indexed": 4,
+      "new": 0,
+      "remaining": 0,
+      "engines": {
+        "ocr": true,
+        "embedding": true
+      },
+      "errors": [],
+      "preserve_pending": true
+    },
+    "passed": true
+  },
+  "scope": "Windows x64 32GB CPU desktop; source runtime. Synthetic speech and image fixtures; not a new frozen binary."
+}

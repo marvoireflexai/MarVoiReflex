@@ -25,6 +25,10 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 **v0.2.1 更新：** 既有標準安裝可重新執行新版下載工具，僅下載約 21 MB 修正包，保留模型與素材。任務直接送出、忙碌保留文字、圖片二次複核與語音轉錄審閱已加入。
 
+## 多引擎本機語音架構（原始碼更新）
+
+已加入 Moonshine Mandarin 增量辨識、Whisper 複核、Silero VAD、選用 Gemma 4 E4B 路由與 E2B 備援、逐句語音合成及本機素材索引。開發環境實測及啟用方式見[多引擎語音架構](docs/local-voice-pipeline.md)。目前 Windows v0.2.1 發行包尚未包含本次原始碼更新。
+
 ## 操作展示
 
 [![素材分類預覽，點擊開啟影片](docs/images/demo-material-preview.png)](docs/demo/MarVoiReflex-Material-Task-20261031.mp4)

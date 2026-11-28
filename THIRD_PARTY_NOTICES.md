@@ -15,3 +15,7 @@
 | Windows SAPI / WebView2 | Windows 安裝環境 | 使用者電腦提供；本倉庫未重新分發語音包／WebView2 runtime |
 
 完整 App 的第三方授權資料夾應與程式一同保留。runtime/manifest.json 記錄固定版本。模型與 Windows App ZIP 隨 GitHub Release 分開提供，Node 及 Python 執行元件包含在 ZIP 內，未放入 Git 原始碼歷史；發行包不含真人錄音、聊天紀錄或連線權杖。
+
+## 選用語音與索引元件（開發環境）
+
+Moonshine Voice 0.1.6、Mandarin Tiny Streaming、EmbeddingGemma 300M Q4、RapidOCR ONNX Runtime 的程式及模型依各上游條款使用；參考 [多引擎語音架構](docs/local-voice-pipeline.md)。模型資產不提交至 Git 歷史。

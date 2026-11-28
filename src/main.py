@@ -66,7 +66,7 @@ def main():
             if path in ['/live.js','/audio-worklet.js']:
                 p=web/path.lstrip('/');data=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.auth():self.fail(403,'Unauthorized');return
-            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None});return
+            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
             if path=='/api/assets':
                 try:
                     with runtime.op_lock:items=runtime.assistant.task.catalog() if runtime.ready else []
@@ -97,6 +97,8 @@ def main():
                 return
             if not self.auth():self.fail(403,'Unauthorized');return
             try:
+                if path=='/api/voice/partial':
+                    content=self.body(256_000);self.reply(200,runtime.partial_voice(content,self.headers.get('X-Call-ID',''),self.headers.get('X-Utterance','')));return
                 if path=='/api/voice/turn':
                     content=self.body(2_000_000);mode=self.headers.get('X-Voice-Mode','');cid=self.headers.get('X-Call-ID','');self.reply(200,runtime.turn(content,mode,cid));return
                 if path=='/api/assets/import':
@@ -127,6 +129,7 @@ def main():
                 if path=='/api/window/ready':
                     if not native_shell:raise RuntimeError('目前沒有桌面視窗。')
                     self.reply(200,native_shell.client_ready(v));return
+                if path=='/api/voice/chunk':self.reply(200,{'audio':runtime.voice_chunk(v.get('call_id'),v.get('turn_id'),v.get('index'))});return
                 if path=='/api/call/start':self.reply(200,runtime.call_start());return
                 if path=='/api/call/end':runtime.call_end();self.reply(200,{'ok':True});return
                 if path=='/api/call/cancel':runtime.cancel_turn();self.reply(200,{'ok':True});return

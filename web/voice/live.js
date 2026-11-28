@@ -2,6 +2,22 @@
 const liveKey=window.MARVOI_KEY;
 const voiceRuntime={stream:null,ctx:null,node:null,source:null,sink:null,callId:null,ready:false,state:'idle',epoch:0,abort:null,busy:false,speaking:false,replySource:null,recording:false,frames:[],pre:[],voicedMs:0,lastVoice:0,speechAt:0,rate:16000,noise:.003,tailUntil:0,bargedMs:0,metrics:[],taskSeq:0,textBusy:false,replyUrl:null};
 let liveReady=false,livePlan=null,typedSequence=0,taskBusy=false,loadingText='正在準備本機模型…';
+let partialEnabled=false,partialPending=false,partialFrames=[],partialUtterance=0;
+function clearPartial(){partialFrames=[];partialUtterance++;}
+function sendPartial(frames,rate){
+  if(!partialEnabled||partialPending||!callActive||!voiceRuntime.callId)return;
+  const id=voiceRuntime.callId,epoch=voiceRuntime.epoch,utterance=String(partialUtterance);partialPending=true;
+  api('/api/voice/partial',encodeWav(frames,rate),{headers:{'Content-Type':'audio/wav','X-Call-ID':id,'X-Utterance':utterance}})
+    .then(v=>{if(callActive&&voiceRuntime.epoch===epoch&&String(partialUtterance)===utterance&&v.text)$('callTranscript').textContent=v.text;})
+    .catch(()=>{}).finally(()=>{partialPending=false;});
+}
+function bufferPartial(a,rate){
+  if(!partialEnabled)return;
+  partialFrames.push(a);
+  const size=partialFrames.reduce((n,f)=>n+f.length,0);
+  if(size>rate*3){partialFrames=[];partialUtterance++;return;}
+  if(size>=rate*.65&&!partialPending){const f=partialFrames;partialFrames=[];sendPartial(f,rate);}
+}
 function syncTextControls(){
   $('taskSend').disabled=taskBusy;
   $('chatSend').disabled=voiceRuntime.textBusy;
@@ -21,7 +37,7 @@ async function api(path,body={},options={}){
 }
 function shortError(error){if(error?.name==='NotAllowedError')return language==='zh'?'請允許麥克風權限。':'Allow microphone access.';if(error?.name==='NotFoundError')return language==='zh'?'找不到麥克風。':'No microphone found.';return String(error?.message||error).slice(0,150);}
 function liveStatus(s){voiceRuntime.state=s;updateCallUI();}
-function resetCapture(){voiceRuntime.recording=false;voiceRuntime.frames=[];voiceRuntime.pre=[];voiceRuntime.voicedMs=0;voiceRuntime.lastVoice=0;voiceRuntime.speechAt=0;}
+function resetCapture(){clearPartial();voiceRuntime.recording=false;voiceRuntime.frames=[];voiceRuntime.pre=[];voiceRuntime.voicedMs=0;voiceRuntime.lastVoice=0;voiceRuntime.speechAt=0;}
 function interruptReply(){
   if(voiceRuntime.abort){voiceRuntime.abort.abort();voiceRuntime.abort=null;}
   if(voiceRuntime.replySource){try{voiceRuntime.replySource.stop();}catch{}voiceRuntime.replySource=null;}
@@ -50,9 +66,9 @@ function audioFrame(message){
   if(!voiceRuntime.recording){
     voiceRuntime.pre.push(a);while(voiceRuntime.pre.reduce((n,f)=>n+f.length,0)>message.rate*.35)voiceRuntime.pre.shift();
     if(rms>threshold)voiceRuntime.voicedMs+=ms;else{voiceRuntime.voicedMs=0;voiceRuntime.noise=.98*voiceRuntime.noise+.02*Math.min(rms,.012);}
-    if(voiceRuntime.voicedMs>=120){voiceRuntime.recording=true;voiceRuntime.frames=voiceRuntime.pre;voiceRuntime.pre=[];voiceRuntime.speechAt=now-voiceRuntime.voicedMs;voiceRuntime.lastVoice=now;liveStatus('recording');}return;
+    if(voiceRuntime.voicedMs>=120){voiceRuntime.recording=true;voiceRuntime.frames=voiceRuntime.pre;clearPartial();for(const f of voiceRuntime.pre)bufferPartial(f,message.rate);voiceRuntime.pre=[];voiceRuntime.speechAt=now-voiceRuntime.voicedMs;voiceRuntime.lastVoice=now;liveStatus('recording');}return;
   }
-  voiceRuntime.frames.push(a);if(rms>threshold)voiceRuntime.lastVoice=now;
+  voiceRuntime.frames.push(a);bufferPartial(a,message.rate);if(rms>threshold)voiceRuntime.lastVoice=now;
   if(now-voiceRuntime.lastVoice>=1100||now-voiceRuntime.speechAt>=20000)flushVoice();
 }
 async function flushVoice(force=false){
@@ -69,7 +85,7 @@ async function flushVoice(force=false){
       await endCall();setMode('task');window.MarVoiSidebar?.close();
       const input=$('taskInput');
       if(input.value.trim())showTaskStatus('語音辨識結果：'+value.recognized+'。輸入框已有文字，未覆蓋原任務。');
-      else{input.value=value.recognized;showTaskStatus(value.low_confidence?'語音辨識信心較低，請校正文字後再送出。':'已辨識語音，請確認或編輯文字後送出。');}
+      else{input.value=value.recognized;showTaskStatus(value.low_confidence?('語音辨識需要確認。'+(value.alternative?'另一引擎結果：'+value.alternative+'。':'')+'請校正文字後再送出。'):'已辨識語音，請確認或編輯文字後送出。');}
       input.focus();return;
     }
     $('callTranscript').textContent=value.recognized;
@@ -79,9 +95,25 @@ async function flushVoice(force=false){
     if(!callActive||epoch!==voiceRuntime.epoch)return;
     const speaker=voiceRuntime.ctx.createBufferSource();speaker.buffer=audio;speaker.connect(voiceRuntime.ctx.destination);voiceRuntime.replySource=speaker;voiceRuntime.busy=false;voiceRuntime.speaking=true;liveStatus('speaking');const play=performance.now();speaker.start();
     const metrics={turn_id:value.turn_id,speech_end_to_play_s:(play-end)/1000,client_total_s:(play-started)/1000,vad_wait_s:vad,network_wait_s:(decodeBegan-started)/1000,audio_decode_s:(play-decodeBegan)/1000,audio_output_latency_s:(voiceRuntime.ctx.baseLatency||0)+(voiceRuntime.ctx.outputLatency||0)};voiceRuntime.metrics.push({...value.metrics,...metrics});voiceRuntime.metrics=voiceRuntime.metrics.slice(-30);renderMetrics();api('/api/metrics',metrics).catch(()=>{});window.dispatchEvent(new CustomEvent('marvoi-playback',{detail:metrics}));
-    speaker.onended=()=>{if(voiceRuntime.replySource===speaker){voiceRuntime.replySource=null;voiceRuntime.speaking=false;voiceRuntime.tailUntil=performance.now()+250;resetCapture();if(callActive)liveStatus(callMuted?'muted':'listening');}};
+    let nextIndex=1;
+    const finish=()=>{voiceRuntime.replySource=null;voiceRuntime.speaking=false;voiceRuntime.abort=null;voiceRuntime.tailUntil=performance.now()+250;resetCapture();if(callActive)liveStatus(callMuted?'muted':'listening');};
+    const prefetch=async(index)=>{
+      if(index>=(value.chunk_count||1))return null;
+      const chunk=await api('/api/voice/chunk',{call_id:id,turn_id:value.turn_id,index},{signal:controller.signal});
+      const r=await fetch(chunk.audio.url,{headers:{'X-MarVoi-Key':liveKey},signal:controller.signal});if(!r.ok)throw new Error('語音分段讀取失敗。');
+      return voiceRuntime.ctx.decodeAudioData(await r.arrayBuffer());
+    };
+    let next=prefetch(nextIndex).catch(()=>null);
+    const ended=async(current)=>{
+      if(voiceRuntime.replySource!==current||!callActive||epoch!==voiceRuntime.epoch)return;
+      const data=await next;
+      if(voiceRuntime.replySource!==current||!callActive||epoch!==voiceRuntime.epoch)return;
+      if(!data){finish();return;}
+      const node=voiceRuntime.ctx.createBufferSource();node.buffer=data;node.connect(voiceRuntime.ctx.destination);voiceRuntime.replySource=node;next=prefetch(++nextIndex).catch(()=>null);node.onended=()=>ended(node);node.start();
+    };
+    speaker.onended=()=>ended(speaker);
   }catch(error){if(error.name!=='AbortError'&&callActive){$('callTranscript').textContent=shortError(error);liveStatus('error');api('/api/metrics',{error:shortError(error)}).catch(()=>{});}}
-  finally{if(epoch===voiceRuntime.epoch){voiceRuntime.abort=null;voiceRuntime.busy=false;if(callActive&&!voiceRuntime.speaking&&voiceRuntime.state!=='error')liveStatus(callMuted?'muted':'listening');}}
+  finally{if(epoch===voiceRuntime.epoch){if(!voiceRuntime.speaking)voiceRuntime.abort=null;voiceRuntime.busy=false;if(callActive&&!voiceRuntime.speaking&&voiceRuntime.state!=='error')liveStatus(callMuted?'muted':'listening');}}
 }
 startCall=async function(){
   if(!liveReady||callActive)return;const epoch=++voiceRuntime.epoch;callActive=true;callMuted=false;callEnded=false;liveStatus('loading');$('callTranscript').textContent='';
@@ -89,11 +121,11 @@ startCall=async function(){
     const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(!callActive||epoch!==voiceRuntime.epoch){stream.getTracks().forEach(t=>t.stop());return;}voiceRuntime.stream=stream;
     const ctx=new AudioContext({sampleRate:16000});voiceRuntime.ctx=ctx;await ctx.resume();await ctx.audioWorklet.addModule('/audio-worklet.js');const source=ctx.createMediaStreamSource(stream),node=new AudioWorkletNode(ctx,'marvoi-pcm'),sink=ctx.createGain();sink.gain.value=0;source.connect(node);node.connect(sink);sink.connect(ctx.destination);node.port.onmessage=e=>audioFrame(e.data);voiceRuntime.source=source;voiceRuntime.node=node;voiceRuntime.sink=sink;
     const reply=await api('/api/call/start');if(!callActive||epoch!==voiceRuntime.epoch){api('/api/call/end').catch(()=>{});return;}
-    voiceRuntime.callId=reply.call_id;voiceRuntime.ready=true;voiceRuntime.noise=.003;callStarted=Date.now();resetCapture();if(callTimer!==null)clearInterval(callTimer);callTimer=setInterval(updateCallTime,250);liveStatus('listening');
+    voiceRuntime.callId=reply.call_id;partialEnabled=!!reply.partial_asr;voiceRuntime.ready=true;voiceRuntime.noise=.003;callStarted=Date.now();resetCapture();if(callTimer!==null)clearInterval(callTimer);callTimer=setInterval(updateCallTime,250);liveStatus('listening');
   }catch(error){await endCall();$('callTranscript').textContent=shortError(error);liveStatus('error');}
 };
 endCall=async function(){
-  const was=callActive;callActive=false;callMuted=false;voiceRuntime.ready=false;voiceRuntime.callId=null;voiceRuntime.epoch++;if(callTimer!==null)clearInterval(callTimer);callTimer=null;
+  const was=callActive;callActive=false;callMuted=false;voiceRuntime.ready=false;partialEnabled=false;voiceRuntime.callId=null;voiceRuntime.epoch++;if(callTimer!==null)clearInterval(callTimer);callTimer=null;
   if(voiceRuntime.abort)voiceRuntime.abort.abort();voiceRuntime.abort=null;
   if(voiceRuntime.replySource){try{voiceRuntime.replySource.stop();}catch{}voiceRuntime.replySource=null;}
   voiceRuntime.speaking=false;voiceRuntime.busy=false;voiceRuntime.stream?.getTracks().forEach(t=>t.stop());voiceRuntime.stream=null;voiceRuntime.node?.disconnect();voiceRuntime.source?.disconnect();voiceRuntime.sink?.disconnect();voiceRuntime.node=null;voiceRuntime.source=null;voiceRuntime.sink=null;const ctx=voiceRuntime.ctx;voiceRuntime.ctx=null;resetCapture();liveStatus(was?'ended':'idle');if(ctx)await ctx.close().catch(()=>{});if(was)api('/api/call/end').catch(()=>{});

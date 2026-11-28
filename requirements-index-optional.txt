@@ -1,0 +1,2 @@
+moonshine-voice==0.1.6
+rapidocr-onnxruntime==1.4.4

@@ -1,5 +1,6 @@
 from pathlib import Path
 from app_paths import model_url
+from model_router import complete,complex_text
 import copy,json,time,requests
 ROOT=Path(__file__).resolve().parent
 SYSTEM='''你是小型商家的素材意圖解析器。使用台灣繁體中文。請依JSON結構輸出。
@@ -42,7 +43,14 @@ class Planner:
   payload={'messages':messages,'response_format':{'type':'json_schema','json_schema':{'name':'material_intent','strict':True,'schema':schema}},'temperature':.1,'top_p':.95,'top_k':50,'min_p':0,'repeat_penalty':1.05,'seed':self.seed,'max_tokens':640,'stream':False,'chat_template_kwargs':{'enable_thinking':False},'cache_prompt':True}
   start=time.perf_counter();record={'payload':payload,'feedback':feedback,'controller_constraints':constraints}
   try:
-   r=requests.post(model_url()+'/v1/chat/completions',json=payload,timeout=(5,60));r.raise_for_status();raw=r.json();record['response']=raw
+   def validate(raw):
+    choice=raw['choices'][0]
+    if choice.get('finish_reason')=='length':raise ValueError('truncated intent')
+    value=json.loads(choice['message']['content'])
+    if not isinstance(value,dict) or set(value)!=set(schema['required']):raise ValueError('invalid schema')
+    for key,spec in schema['properties'].items():
+     if not isinstance(value[key],str) or ('enum' in spec and value[key] not in spec['enum']):raise ValueError('invalid constrained field')
+   raw,route=complete(payload,prefer_advanced=bool(feedback) or complex_text(history[-1]['content']),validator=validate);record['response']=raw;record['model_route']=route
    choice=raw['choices'][0]
    if choice.get('finish_reason')=='length':raise RuntimeError('output_truncated')
    value=json.loads(choice['message']['content'])
