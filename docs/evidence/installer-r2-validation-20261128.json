@@ -1,0 +1,18 @@
+{
+  "archive_entries": 22161,
+  "old_max_path": 261,
+  "new_max_path": 221,
+  "test_max_path": 231,
+  "failing_entry_verified": true,
+  "fresh_install_from_verified_cache": true,
+  "patched_files_verified": 4,
+  "model_hashes_verified": true,
+  "frozen_app_startup_chat_pass": true,
+  "no_automatic_scan": true,
+  "test_isolated": true,
+  "short_pointer_repeat_launch_pass": true,
+  "limitations": [
+    "Windows x64 isolated test using verified cached downloads; target device itself not remotely tested",
+    "No change to EXE, inference weights, permission model or base ZIP"
+  ]
+}

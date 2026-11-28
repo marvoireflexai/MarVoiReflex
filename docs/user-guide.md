@@ -24,7 +24,7 @@
 - 圖片內容搜尋單次最多 40 張；不支援指定路徑或複合日期條件。辨識結果不會自動搬移檔案。
 - 32GB 桌機的驗證結果尚不能代表 8GB 記憶體裝置、其他硬體配置及受管理的 Windows 環境之相容性。受管理電腦須遵守管理員的執行及網路政策。
 
-App 安裝在使用者的 LocalAppData 下 MarVoiReflex/20261128-E2B，資料在各安裝目錄的 Data-MarVoiVoice；舊安裝不會被覆寫。若網路受限，請檢查安裝日誌並聯絡管理員。不要公開 connection.json（含本機連線權杖）。
+安裝工具 r2 將新 App 安裝在 LocalAppData/MVR/a-XXXXXXXX 短路徑，下載快取仍在 LocalAppData/MarVoiReflex/20261128-E2B/downloads。舊安裝仍可辨識，不必重新下載已校驗的權重。資料在各安裝目錄的 Data-MarVoiVoice；舊安裝不會被覆寫。若網路受限，請檢查安裝日誌並聯絡管理員。不要公開 connection.json（含本機連線權杖）。
 
 ## 手動下載
 

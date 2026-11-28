@@ -14,9 +14,11 @@ $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'MarVoiReflex\20261128-E2B'
 $cache = Join-Path $root 'downloads'
+$installRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'MVR'
 $stamp = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,6)
-$stage = Join-Path $root ('stage-' + $stamp)
-$final = Join-Path $root ('MarVoiReflex-' + $stamp)
+$shortId = [Guid]::NewGuid().ToString('N').Substring(0,8)
+$stage = Join-Path $installRoot ('s-' + $shortId)
+$final = Join-Path $installRoot ('a-' + $shortId)
 $zipName = 'MarVoiReflex-Gemma4-E2B-Windows-x64.zip'
 $zipSha = '43e06d091651cecfb164b246a86df92dd980bf1964d4b34096d8627021c1dfc4'
 $zipBytes = 708360885L
@@ -153,9 +155,13 @@ function Apply-LocalPatch([string]$App){
 
 try{
     [void][IO.Directory]::CreateDirectory($root)
+    [void][IO.Directory]::CreateDirectory($installRoot)
+    foreach($folder in @($root,$installRoot)){
+        if((Get-Item -LiteralPath $folder -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw '安裝或快取目錄不可為連結。'}
+    }
     $log=Join-Path $root ('install-'+$stamp+'.log')
     try{Start-Transcript -LiteralPath $log -Force | Out-Null;$transcript=$true}catch{}
-    Write-Host 'MarVoiReflex 0.3.0 | Gemma 4 E2B Vision | Windows x64'
+    Write-Host 'MarVoiReflex 0.3.0 | Installer r2 | Windows x64'
     $arch=$env:PROCESSOR_ARCHITECTURE
     if($env:PROCESSOR_ARCHITEW6432){$arch=$env:PROCESSOR_ARCHITEW6432}
     if($arch -ne 'AMD64'){throw '此版本僅支援 Windows Intel / AMD x64。'}
@@ -163,8 +169,10 @@ try{
     if(Test-Path -LiteralPath $pointer){
         $old=Get-Content -LiteralPath $pointer -Raw -Encoding UTF8
         $old=$old.Trim()
-        if($old -match '^MarVoiReflex-\d{8}-\d{6}-[0-9a-f]{6}$'){
-            $existing=Join-Path $root $old
+        $existing=$null
+        if($old -match '^MarVoiReflex-\d{8}-\d{6}-[0-9a-f]{6}$'){$existing=Join-Path $root $old}
+        elseif($old -match '^a-[0-9a-f]{8}$'){$existing=Join-Path $installRoot $old}
+        if($existing -and (Test-Path -LiteralPath $existing -PathType Container)){
             $oldExe=Join-Path $existing 'MarVoiReflex.exe'
             $g=Join-Path $existing 'assets\gemma4-e2b'
             if(((Test-Asset $oldExe $baseExeSha) -or (Test-Asset $oldExe $priorExeSha) -or (Test-Asset $oldExe $exeSha)) -and (Test-Asset (Join-Path $g $model) $modelSha 3349516256L) -and (Test-Asset (Join-Path $g $projector) $projectorSha 986833664L) -and (Test-Path (Join-Path $g 'runtime\llama-server.exe')) -and (Test-Path (Join-Path $existing 'web\voice\index.html'))){
@@ -182,8 +190,20 @@ try{
     $zip=Fetch ($base+$zipName) $zipName $zipSha $zipBytes
     $m=Fetch ($hf+$model) $model $modelSha 3349516256L
     $v=Fetch ($hf+$projector) $projector $projectorSha 986833664L
+    # Preflight the exact archive paths before touching the installation.
+    $archive=[IO.Compression.ZipFile]::OpenRead($zip)
+    try{
+        foreach($entry in $archive.Entries){
+            $rel=$entry.FullName.Replace('/','\')
+            if(-not $rel.StartsWith('MarVoiReflex\',[StringComparison]::Ordinal) -or $rel.Contains(':') -or ($rel.Split('\') -contains '..')){throw '安裝壓縮檔包含非預期路徑。'}
+            $dest=[IO.Path]::GetFullPath((Join-Path $stage $rel))
+            $installed=[IO.Path]::GetFullPath((Join-Path $final $rel.Substring('MarVoiReflex\'.Length)))
+            if($dest.Length -ge 260 -or $installed.Length -ge 260 -or [IO.Path]::GetDirectoryName($dest).Length -ge 248){throw '此帳號的安裝路徑仍過長，請使用較短的本機使用者資料路徑。下載快取已保留。'}
+        }
+    }finally{$archive.Dispose()}
+    if((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $final)){throw '安裝目錄名稱衝突，請重新啟動工具。'}
     [void][IO.Directory]::CreateDirectory($stage)
-    Write-Host '解壓縮 App 並放置 Gemma 4 E2B 權重。'
+    Write-Host ('解壓縮至短路徑：'+$stage)
     [IO.Compression.ZipFile]::ExtractToDirectory($zip,$stage)
     $app=Join-Path $stage 'MarVoiReflex'
     $exe=Join-Path $app 'MarVoiReflex.exe'
