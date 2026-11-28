@@ -73,6 +73,7 @@ def main():
                 p=web/path.lstrip('/');data=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.auth():self.fail(403,'Unauthorized');return
             if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'presentation':runtime.presentation,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
+            if path=='/api/search/status':self.reply(200,{'progress':runtime.search_progress.status()});return
             if path=='/api/local/status':self.reply(200,runtime.local_files.status());return
             if path=='/api/assets':
                 try:
@@ -127,12 +128,15 @@ def main():
                                 f.write(chunk);left-=len(chunk)
                     self.reply(200,{'ok':True,'name':name});return
                 v=self.json_body()
+                if path=='/api/search/cancel':self.reply(200,{'cancelled':runtime.search_progress.cancel(v.get('id'))});return
                 if path=='/api/local/scope':
                     # Scope is accepted only from the authenticated UI, never the LLM.
                     mode=v.get('mode')
                     if mode is not None and (mode not in ('personal','drives') or v.get('consent') is not True):raise PermissionError('必須先確認本機搜尋授權。')
                     self.reply(200,runtime.set_local_scope(mode));return
-                if path=='/api/local/refresh':self.reply(200,runtime.local_files.refresh());return
+                if path=='/api/local/refresh':
+                    runtime.search_progress.cancel_local()
+                    self.reply(200,runtime.local_files.refresh());return
                 if path=='/api/local/next':self.reply(200,{'result':runtime.local_continue()});return
                 if path=='/api/local/preview':self.reply(200,runtime.local_files.preview(v.get('id')));return
                 if path=='/api/local/reveal':self.reply(200,runtime.local_files.reveal(v.get('id')));return

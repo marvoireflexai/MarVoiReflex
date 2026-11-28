@@ -12,7 +12,7 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 ## 下載與啟動｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.2-presentation-20261128)
+**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.3-search-speed-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.3-search-speed-20261128)
 
 目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.06 GB，請預留至少 12 GB 磁碟空間。
 
@@ -25,7 +25,9 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 **安裝工具 r2：** 修正 Windows 長路徑解壓相容性，新安裝採短路徑並沿用既有下載快取。
 
-**v0.3.2 更新：** 新增獨立成果展示模式、圖片縮圖及一般聊天的檔案任務路由；[展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Presentation.cmd)（需先安裝最新版）。[成果發表驗收計畫](docs/presentation-readiness.md)。
+**v0.3.3 更新：** 圖片搜尋使用精簡判定與雙重複核、工作階段快取、實際進度及停止控制。三張合成圖首次搜尋約 11.5–11.6 秒，重複相同條件約 0.076 秒（受控測試）。[效能驗證](docs/releases/2026-11-28-search-speed.md)。
+
+**v0.3.2 更新：** 新增獨立成果展示模式、圖片縮圖及一般聊天的檔案任務路由；[展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.3-search-speed-20261128/MarVoiReflex-Presentation.cmd)（需先安裝最新版）。[成果發表驗收計畫](docs/presentation-readiness.md)。
 
 **v0.3.1 更新：** 通話中的語音指令直接處理，不需再次送出；結果卡可開啟原檔、下載或預覽。改動工作區檔案仍須確認。
 

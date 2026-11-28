@@ -1,6 +1,6 @@
 # Windows 使用指南｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.2-presentation-20261128)
+**[下載 Windows 一鍵安裝／啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.3-search-speed-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.3-search-speed-20261128)
 
 此版本預設使用 Gemma 4 E2B IT QAT Q4_0 及視覺 projector。首次需下載 App、3.35 GB 語言權重和 0.99 GB 視覺權重，合計約 5.06 GB（含任務修正包）。模型由 Google 官方來源下載，校驗 SHA-256 後放置到正確位置。無需 GitHub 帳號、API Key、獨顯、另外安裝 Python 或 Node.js。
 
@@ -14,7 +14,11 @@
 
 ## 成果展示模式
 
-先完成新版安裝／更新並關閉原本 App，再執行 [成果展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.2-presentation-20261128/MarVoiReflex-Presentation.cmd)。每次建立獨立的合成素材 session，不讀取個人磁碟。詳細流程及驗收見[成果發表驗收計畫](presentation-readiness.md)。
+先完成新版安裝／更新並關閉原本 App，再執行 [成果展示啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.3-search-speed-20261128/MarVoiReflex-Presentation.cmd)。每次建立獨立的合成素材 session，不讀取個人磁碟。詳細流程及驗收見[成果發表驗收計畫](presentation-readiness.md)。
+
+## 圖片搜尋進度與停止
+
+圖片搜尋時顯示已辨識數量、符合數量及快取重用數量；可按「停止搜尋」，待當前推論完成後停止。取消會保留輸入指令。若需清除當前工作階段快取，可在任務頁輸入「清除圖片辨識快取」。確定結果仍須兩次模型判斷一致，需確認項目不是確定命中。詳見[驗證方法](testing/search-responsiveness.md)。
 
 ## 免匯入本機搜尋
 
@@ -32,7 +36,7 @@
 
 ## 手動下載
 
-下方完整 ZIP 為 v0.2.0 基礎安裝包；建議優先使用 v0.3.2 一鍵工具，會自動套用修正並校驗。手動安裝基礎版後，若非標準安裝目錄，需將 v0.3.2 成果展示更新包內 files/ 的 4 個檔案依原相對路徑套用；操作前先關閉 App、備份原始程式檔並核對 SHA-256，勿覆蓋使用者資料。
+下方完整 ZIP 為 v0.2.0 基礎安裝包；建議優先使用 v0.3.3 一鍵工具，會自動套用修正並校驗。手動安裝基礎版後，若非標準安裝目錄，需將 v0.3.3 搜尋反應速度更新包內 files/ 的 4 個檔案依原相對路徑套用；操作前先關閉 App、備份原始程式檔並核對 SHA-256，勿覆蓋使用者資料。
 
 1. 從 [基礎發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128) 下載 MarVoiReflex-Gemma4-E2B-Windows-x64.zip 並完整解壓。
 2. 從 [Google 官方 Gemma 4 E2B QAT GGUF](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf) 下載 gemma-4-E2B_q4_0-it.gguf 及 gemma-4-E2B-it-mmproj.gguf。

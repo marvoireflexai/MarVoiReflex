@@ -8,6 +8,7 @@ from voice_engine import VoiceEngine
 from model_router import complete,complex_text,local_endpoint
 from local_files import LocalFiles,wants_search,workspace_request,blocked_request,parse_query,IMAGE as LOCAL_IMAGES
 from result_files import ResultFiles,capabilities
+from search_progress import SearchProgress,SearchCancelled
 
 class Runtime:
     def __init__(self,presentation_files=None):
@@ -18,7 +19,7 @@ class Runtime:
             self.local_files=LocalFiles(self.root,excluded=(bundle_root(),),discover=lambda mode:roots_for(presentation_files),presentation=True)
             self.local_files.set_scope('personal')
         else:self.local_files=LocalFiles(self.root,excluded=(bundle_root(),))
-        self.local_vision=None;self.result_files=ResultFiles(self.root,self.local_files)
+        self.local_vision=None;self.result_files=ResultFiles(self.root,self.local_files);self.search_progress=SearchProgress()
     def start(self):
         try:
             self.services.start(lambda phase:setattr(self,'phase',phase))
@@ -48,9 +49,11 @@ class Runtime:
         if not self.current(cid,generation):raise RuntimeError('通話已取消。')
         return {'call_id':cid,'voice':self.voice.voice_name,'asr':self.voice.asr_name,'asr_load_s':self.voice.load_s,'partial_asr':self.voice.moonshine_ready}
     def call_end(self):
+        if hasattr(self,'search_progress'):self.search_progress.cancel_owner(self.call_id)
         with self.state_lock:self.call_id=None;self.generation+=1;self.speech_chunks=None
         self.voice.reset_stream()
     def cancel_turn(self):
+        if hasattr(self,'search_progress'):self.search_progress.cancel_owner(self.call_id)
         with self.state_lock:self.generation+=1;self.speech_chunks=None
         self.voice.reset_stream()
     def current(self,call_id,generation):
@@ -68,11 +71,16 @@ class Runtime:
         if not text:raise RuntimeError('模型沒有產生回覆。')
         self.chat_history.extend([{'role':'user','content':user},{'role':'assistant','content':text}]);self.chat_history=self.chat_history[-10:]
         return {'status':'chat','mode':'chat','text':text,'executed':False,'llm_s':time.perf_counter()-t,'model_route':route,'truncated':choice.get('finish_reason')=='length'}
-    def task(self,text):
-        result=self._task(text)
-        refs=result.pop('_file_refs',None)
-        if refs is not None:self.result_files.attach(result,refs)
-        return result
+    def task(self,text,owner=None):
+        with self.search_progress.operation(owner):
+            try:
+                result=self._task(text)
+                self.search_progress.check()
+                refs=result.pop('_file_refs',None)
+                if refs is not None:self.result_files.attach(result,refs)
+                return result
+            except SearchCancelled as e:return {'status':'cancelled','mode':'task','text':str(e),'selected':[]}
+
     def _task(self,text):
         from flow import paths_in,ScopeError
         from semantics import analyze
@@ -90,6 +98,10 @@ class Runtime:
             return {'status':'cancelled','mode':'task','text':'沒有待確認的操作。'}
         if normalized in ['繼續搜尋','繼續搜尋下一批','搜尋下一批','下一批'] and self.local_files.mode:
             return self.local_search('',True)
+        if normalized in ['清除圖片辨識快取','清除本次圖片快取']:
+            if self.vision_search:self.vision_search.cache.clear()
+            if self.local_vision:self.local_vision.cache.clear()
+            return {'status':'clarify','mode':'task','text':'已清除本次工作階段的圖片辨識快取。請重新提出搜尋條件；工作區的確定結果仍可使用已驗證的內容索引。','preserve_pending':True}
         if normalized in ['建立素材索引','更新素材索引','建立圖片索引','更新圖片索引']:
             if not self.semantic_assets:return {'status':'clarify','mode':'task','text':'素材索引尚未就緒。','preserve_pending':True}
             return self.semantic_assets.build(task.catalog(),task.checked)
@@ -108,7 +120,7 @@ class Runtime:
             if task.pending:task.cancel(task.pending['id'])
             assets=task.catalog()
             if self.semantic_assets:assets=self.semantic_assets.rank(text,assets)
-            result=self.vision_search.search(text,assets,task.checked)
+            result=self.vision_search.search(text,assets,task.checked,self.search_progress)
             matches={x['path'] for m in ('yes','uncertain') for x in result.get('visual_results',{}).get(m,[])}
             result['_file_refs']=[a for a in assets if a['path'] in matches]
             return result
@@ -146,7 +158,7 @@ class Runtime:
             # Search cannot execute or modify files. Invalidate any old workspace confirmation.
             task=self.assistant.task
             if task.pending:task.cancel(task.pending['id'])
-            result=self.local_files.search(text,visual,self.local_vision.classify if self.local_vision else None,continuation)
+            result=self.local_files.search(text,visual,self.local_vision.classify if self.local_vision else None,continuation,self.search_progress)
             with self.local_files.lock:
                 rows=[]
                 for a in result.get('local_results',[]):
@@ -157,6 +169,7 @@ class Runtime:
         except (ValueError,PermissionError) as exc:return {'status':'clarify','mode':'task','text':str(exc),'preserve_pending':True}
     def set_local_scope(self,mode):
         if self.presentation and mode=='drives':raise PermissionError('展示模式僅限合成素材。')
+        self.search_progress.cancel_local()
         result=self.local_files.set_scope(mode)
         if self.local_vision:
             from vision_search import VisionSearch
@@ -165,7 +178,10 @@ class Runtime:
     def local_continue(self):
         if not self.ready:raise RuntimeError('本機模型尚未就緒。')
         if not self.op_lock.acquire(blocking=False):raise RuntimeError('BUSY')
-        try:return self.local_search('',True)
+        try:
+            with self.search_progress.operation():
+                try:return self.local_search('',True)
+                except SearchCancelled as e:return {'status':'cancelled','mode':'task','text':str(e),'selected':[]}
         finally:self.op_lock.release()
     @staticmethod
     def spoken(result):
@@ -239,7 +255,7 @@ class Runtime:
                 if not asr.get('text') or asr.get('low_confidence'):
                     result={'status':'clarify','mode':'task','text':'剛才的指令沒有辨識清楚，請再說一次完整的任務。我還沒有執行任何操作。','preserve_pending':True}
                 else:
-                    result=self.task(asr['text'])
+                    result=self.task(asr['text'],owner=call_id)
             else:result=self.chat(asr['text'])
             processing=time.perf_counter()-start
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}

@@ -23,6 +23,29 @@ function syncTextControls(){
   $('chatSend').disabled=voiceRuntime.textBusy;
   $('taskSend').setAttribute('aria-busy',String(taskBusy));
 }
+let activeSearch=null,searchPolling=false;
+function paintSearchProgress(p){
+  activeSearch=p;
+  for(const prefix of ['task','call']){
+    const box=$(prefix+'SearchProgress'),label=$(prefix+'SearchLabel'),bar=$(prefix+'SearchBar'),cancel=$(prefix+'SearchCancel');
+    box.hidden=!p;
+    if(!p)continue;
+    if(prefix==='task'&&mode==='chat'&&voiceRuntime.textBusy)setMode('task');
+    label.textContent=p.cancelling?'正在停止，完成當前圖片後結束…':'圖片辨識 '+p.done+' / '+p.total+' · 符合 '+p.matched+(p.cached?' · 重用 '+p.cached:'');
+    bar.max=Math.max(1,p.total);bar.value=p.done;cancel.disabled=p.cancelling;
+  }
+}
+async function pollSearchProgress(){
+  if(searchPolling||!(taskBusy||voiceRuntime.textBusy||voiceRuntime.busy||activeSearch))return;
+  searchPolling=true;
+  try{const v=await api('/api/search/status',{}, {method:'GET'});paintSearchProgress(v.progress);}
+  catch(e){}finally{searchPolling=false;}
+}
+for(const prefix of ['task','call'])$(prefix+'SearchCancel').onclick=async()=>{
+  const p=activeSearch;if(!p)return;
+  try{const v=await api('/api/search/cancel',{id:p.id});if(v.cancelled)paintSearchProgress({...p,cancelling:true});}catch(e){showTaskStatus(shortError(e));}
+};
+setInterval(pollSearchProgress,350);
 function showTaskStatus(text){const node=$('taskFeedback');node.textContent=text;node.title=text;node.scrollIntoView({block:'nearest'});}
 let localScopeState=null,localPolling=false;
 function paintLocalStatus(s){
@@ -170,7 +193,7 @@ async function flushVoice(force=false){
     while(true){try{value=await api('/api/voice/turn',wav,{headers:{'Content-Type':'audio/wav','X-Voice-Mode':modeAtStart,'X-Call-ID':id},signal:controller.signal});break;}catch(e){if(e.status===409&&e.message==='BUSY'&&performance.now()-retryBegan<8000){await new Promise(r=>setTimeout(r,180));continue;}throw e;}}
     if(!callActive||epoch!==voiceRuntime.epoch||id!==voiceRuntime.callId)return;
     if(value.status==='cancelled'||value.status==='no_speech'){voiceRuntime.busy=false;if(value.status==='no_speech')$('callTranscript').textContent=language==='zh'?'沒有辨識到清楚語音，請再說一次。':'No clear speech detected. Try again.';liveStatus(callMuted?'muted':'listening');return;}
-    $('callTranscript').textContent=value.recognized;
+    paintSearchProgress(null);$('callTranscript').textContent=value.recognized;
     if(value.result?.mode==='task'){
       applyTask(value.result);
       renderFileCards(value.result.file_results||[],$('callFiles'));
@@ -257,8 +280,8 @@ previewTask=async function(){
     if(callActive)await endCall();
     const v=await api('/api/text',{mode:'task',text});
     if(seq===typedSequence){
-      applyTask(v.result);
-      if(!['error','clarify','refused'].includes(v.result.status)&&input.value.trim()===text)input.value='';
+      paintSearchProgress(null);applyTask(v.result);
+      if(!['error','clarify','refused','cancelled'].includes(v.result.status)&&input.value.trim()===text)input.value='';
     }
   }catch(e){
     if(seq===typedSequence)showTaskStatus(e.message==='BUSY'?'模型正在處理上一個請求；任務文字已保留，請稍後重試。':'任務未完成：'+shortError(e)+'。文字已保留，可重新送出。');

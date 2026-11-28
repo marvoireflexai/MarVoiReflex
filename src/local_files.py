@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime,date,timedelta,time as dt_time
 import os,re,stat,sqlite3,threading,time,secrets,json,hashlib
 from contextlib import contextmanager
+from search_progress import SearchCancelled
 
 IMAGE={'.jpg','.jpeg','.png','.webp'}
 EXT=IMAGE|{'.gif','.bmp','.tif','.tiff','.svg','.heic','.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.txt','.md','.csv','.rtf','.odt','.ods','.odp','.psd','.ai','.indd','.fig','.mp4','.mov','.m4v','.avi','.mkv','.mp3','.wav','.m4a','.flac'}
@@ -305,7 +306,7 @@ class LocalFiles:
             return {'ok':True}
     def close(self):
         with self.lock:self.epoch+=1;self.results={};self.last=None
-    def search(self,text,visual=False,classifier=None,continuation=False):
+    def search(self,text,visual=False,classifier=None,continuation=False,progress=None):
         with self.lock:
             if not self.mode:raise PermissionError('請先啟用本機搜尋。')
             if continuation:
@@ -330,8 +331,11 @@ class LocalFiles:
                 total=c.execute('SELECT count(*) FROM files'+clause,args).fetchone()[0]
                 rows=c.execute('SELECT path,name,ext,mtime,size FROM files'+clause+' ORDER BY mtime DESC,path LIMIT ? OFFSET ?',args+[limit,offset]).fetchall()
             state=self.state;indexed=self.count
-        results=[];errors=0
+        results=[];errors=0;cached=0
+        if q['visual'] and progress:progress.begin(len(rows),'local')
         for path,name,ext,mtime,size in rows:
+            if progress:progress.check()
+            v=None
             try:
                 with self.lock:
                     if e!=self.epoch:raise PermissionError('搜尋已取消。')
@@ -342,14 +346,23 @@ class LocalFiles:
                         data=self.read_bytes(p,32*1024**2)
                 reason='';match='yes'
                 if q['visual']:
-                    v=classifier(p,q['query'],hashlib.sha256(data).hexdigest(),data)
+                    def check_search():
+                        if progress:progress.check()
+                        with self.lock:
+                            if e!=self.epoch:raise SearchCancelled('授權或索引已變更，搜尋已停止。')
+                    v=classifier(p,q['query'],hashlib.sha256(data).hexdigest(),data,check=check_search)
+                    cached+=int(bool(v.get('cached')))
                     match=v['match'];reason=v['reason']
                     if match=='no':continue
                 with self.lock:
                     if e!=self.epoch:raise PermissionError('搜尋已取消。')
                     rid=self._remember(p,mtime,size)
                 results.append({'id':rid,'name':name,'path':str(p),'match':match,'reason':reason,'previewable':ext in ('.txt','.md','.csv'),'mtime':mtime,'size':size})
+            except SearchCancelled:raise
             except (OSError,ValueError,RuntimeError):errors+=1
+            finally:
+                if q['visual'] and progress:progress.step(v)
+        if progress:progress.check()
         with self.lock:
             if e!=self.epoch:raise PermissionError('搜尋已取消或授權已變更。')
             next_offset=offset+len(rows)
@@ -357,8 +370,10 @@ class LocalFiles:
             self.last=(q,next_offset,e) if more else None
         note='索引建立中，結果尚未完整。' if state=='scanning' else '已達掃描上限或索引未完成，結果並非全磁碟完整清單。' if state!='complete' else '已掃描目前授權範圍內符合索引條件的檔案。'
         text=f'{note} 本頁檢查 {len(rows)} 個候選，找到 {len(results)} 個結果；候選總數 {total}，索引 {indexed} 個檔案。'
-        if q['visual']:text+=' 圖片依內容辨識；需確認項目不視為確定命中。'
+        if q['visual']:
+            text+=' 圖片依內容辨識；需確認項目不視為確定命中。'
+            if cached:text+=f' 本次重用 {cached} 張辨識結果。'
         if q['lo'] is not None:text+=' 日期依最後修改時間判定。'
         if errors:text+=f' {errors} 個檔案已變更、無法讀取或辨識失敗。'
         if more:text+=' 可繼續搜尋下一批。'
-        return {'status':'searched','mode':'task','text':text,'selected':[r['name'] for r in results if r['match']=='yes'],'local_results':results,'local_more':more,'local_index_state':state,'candidates':total,'scanned':len(rows)}
+        return {'status':'searched','mode':'task','text':text,'selected':[r['name'] for r in results if r['match']=='yes'],'local_results':results,'local_more':more,'local_index_state':state,'candidates':total,'scanned':len(rows),'cached':cached}

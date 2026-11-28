@@ -1,0 +1,145 @@
+{
+  "source": {
+    "mode": "source",
+    "passed": [
+      "cold_visual_car",
+      "warm_cache_reuses_all_three_candidates",
+      "other_visual_queries_preserve_accuracy",
+      "real_ui_progress_and_cancel_keeps_text",
+      "retry_and_original_file_download",
+      "originals_unchanged"
+    ],
+    "timings": [
+      {
+        "query": "幫我找汽車的照片",
+        "seconds": 11.7045,
+        "selected": [
+          "IMG_4128.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "幫我找汽車的照片。",
+        "seconds": 0.1032,
+        "selected": [
+          "IMG_4128.jpg"
+        ],
+        "cached": 3,
+        "status": "searched"
+      },
+      {
+        "query": "找出紅色背景的圖片",
+        "seconds": 11.8339,
+        "selected": [
+          "IMG_0631.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "找出有黃色花朵的圖片",
+        "seconds": 11.8433,
+        "selected": [
+          "IMG_0987.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "清除圖片辨識快取",
+        "seconds": 0.0396,
+        "selected": null,
+        "cached": null,
+        "status": "clarify"
+      }
+    ],
+    "isolated": true,
+    "physical_8gb_tested": false,
+    "cancel_seconds": 3.018,
+    "page_errors": []
+  },
+  "packaged": {
+    "mode": "frozen",
+    "passed": [
+      "cold_visual_car",
+      "warm_cache_reuses_all_three_candidates",
+      "other_visual_queries_preserve_accuracy",
+      "real_ui_progress_and_cancel_keeps_text",
+      "retry_and_original_file_download",
+      "originals_unchanged"
+    ],
+    "timings": [
+      {
+        "query": "幫我找汽車的照片",
+        "seconds": 11.6425,
+        "selected": [
+          "IMG_4128.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "幫我找汽車的照片。",
+        "seconds": 0.0758,
+        "selected": [
+          "IMG_4128.jpg"
+        ],
+        "cached": 3,
+        "status": "searched"
+      },
+      {
+        "query": "找出紅色背景的圖片",
+        "seconds": 11.5237,
+        "selected": [
+          "IMG_0631.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "找出有黃色花朵的圖片",
+        "seconds": 11.5078,
+        "selected": [
+          "IMG_0987.jpg"
+        ],
+        "cached": 0,
+        "status": "searched"
+      },
+      {
+        "query": "清除圖片辨識快取",
+        "seconds": 0.0464,
+        "selected": null,
+        "cached": null,
+        "status": "clarify"
+      }
+    ],
+    "isolated": true,
+    "physical_8gb_tested": false,
+    "cancel_seconds": 2.972,
+    "page_errors": []
+  },
+  "exe_sha256": "527f392d1e465c4470d70a8d19533897a5bb2aab82bd26fa147d8f58fffe44e3",
+  "baseline": {
+    "release": "v0.3.2",
+    "cold_car_seconds": 19.768,
+    "repeat_car_seconds": 8.511,
+    "source": "presentation-readiness-20261128.json"
+  },
+  "installer": {
+    "v0_3_2_update_pass": true,
+    "patched_files_verified": 4,
+    "existing_user_data_preserved": true
+  },
+  "safety_checks": {
+    "search_owner_cancel": true,
+    "stale_id_rejected": true,
+    "local_scope_cancel": true
+  },
+  "limitations": [
+    "Six synthetic files, 32GB Windows CPU desktop",
+    "Single request samples, not statistical performance estimates",
+    "No microphone, physical 8GB device, real commercial image library or full-disk benchmark in this run",
+    "Supplemental validation, not completion of original 50 research cases"
+  ]
+}
