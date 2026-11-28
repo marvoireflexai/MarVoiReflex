@@ -1,5 +1,5 @@
 """Read-only visual retrieval for the optional Gemma 4 E2B profile."""
-import base64, hashlib, io, json, re
+import base64, hashlib, io, json, re, sys, time
 from pathlib import Path
 import requests
 from app_paths import model_url,data_root
@@ -37,6 +37,9 @@ class VisionSearch:
         sha=hashlib.sha256(data).hexdigest()
         if sha!=expected_hash:raise ValueError('圖片內容已改變，請重新搜尋')
         revision='e2b-560-enum-double-check-v3'
+        if sys.platform=='darwin':
+            import psutil
+            revision='e2b-mac-'+('280' if psutil.virtual_memory().total<10*1024**3 else '560')+'-enum-double-check-v3'
         key=(sha,query)
         if key in self.cache:
             check();return dict(self.cache[key],cached=True)
@@ -59,7 +62,15 @@ class VisionSearch:
         def classify_once(prompt):
             check()
             payload={'messages':[{'role':'user','content':[image,{'type':'text','text':prompt}]}],'response_format':{'type':'json_schema','json_schema':{'name':'visual_verdict','strict':True,'schema':schema}},'temperature':0.0,'cache_prompt':True,'max_tokens':32,'stream':False,'chat_template_kwargs':{'enable_thinking':False}}
-            response=self.session.post(model_url()+'/v1/chat/completions',json=payload,timeout=(5,120))
+            started=time.perf_counter()
+            try:
+                response=self.session.post(model_url()+'/v1/chat/completions',json=payload,timeout=(5,180 if sys.platform=='darwin' else 120))
+            finally:
+                if sys.platform=='darwin':
+                    try:
+                        p=data_root()/'logs'/'vision-timing.jsonl';p.parent.mkdir(parents=True,exist_ok=True)
+                        with p.open('a',encoding='utf-8') as f:f.write(json.dumps({'seconds':round(time.perf_counter()-started,3)})+'\n')
+                    except OSError:pass
             check();response.raise_for_status();choice=response.json()['choices'][0]
             if choice.get('finish_reason')=='length':raise ValueError('辨識輸出未完成')
             value=json.loads(choice['message']['content'])

@@ -6,7 +6,7 @@ on:
       - 'src/**'
       - 'scripts/**'
       - 'requirements-macos.txt'
-      - '.github/workflows/macos-preview.yml'
+      - '.github/workflows/*macos*.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,71 +14,33 @@ concurrency:
   group: macos-preview-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            arch: arm64
-          - runner: macos-15-intel
-            arch: x86_64
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          architecture: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
-      - name: Install pinned native dependencies
-        run: |
-          python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-macos.txt
-          python -m compileall -q src
-          python -c "import faster_whisper,ctranslate2,onnxruntime,sys; print(sys.platform, ctranslate2.__version__, onnxruntime.__version__)"
-      - name: Build and test frozen application
-        run: python -u scripts/build_macos.py
-      - name: Upload validated package
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: MarVoiReflex-macOS-${{ matrix.arch }}
-          path: |
-            dist-macos/MarVoiReflex-macOS-${{ matrix.arch }}.zip
-            dist-macos/SHA256SUMS-${{ matrix.arch }}.txt
-            dist-macos/validation-${{ matrix.arch }}.json
-          if-no-files-found: error
-          compression-level: 0
-      - name: Upload diagnostic evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macOS-diagnostics-${{ matrix.arch }}
-          path: |
-            dist-macos/validation-*.log
-            dist-macos/validation-*.json
-          if-no-files-found: ignore
-  publish:
-    needs: build
-    if: github.ref == 'refs/heads/feature/macos-preview'
-    runs-on: ubuntu-latest
+  build_arm64:
+    uses: ./.github/workflows/build-macos-native.yml
+    with:
+      runner: macos-15
+      arch: arm64
+      python_arch: arm64
+  build_intel:
+    uses: ./.github/workflows/build-macos-native.yml
+    with:
+      runner: macos-15-intel
+      arch: x86_64
+      python_arch: x64
+  publish_arm64:
+    needs: build_arm64
+    if: success() && github.ref == 'refs/heads/feature/macos-preview'
     permissions:
       contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: MarVoiReflex-macOS-*
-          path: release
-          merge-multiple: true
-      - name: Verify both packages and publish preview
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          cd release
-          sha256sum -c SHA256SUMS-arm64.txt
-          sha256sum -c SHA256SUMS-x86_64.txt
-          python -c "import json; assert all(json.load(open('validation-'+a+'.json'))['success'] for a in ['arm64','x86_64'])"
-          tag="v0.3.3-macos-preview-${GITHUB_SHA:0:7}"
-          gh release create "$tag" --target "$GITHUB_SHA" --prerelease --latest=false --title "MarVoiReflex macOS Preview | 0.3.3" --notes "Native macOS ARM64 and Intel x64 preview; validated on GitHub-hosted macOS runners using synthetic files and speech. CPU-only, macOS 14+ target, physical microphone and Finder interactions not validated. Ad-hoc signed, not Apple notarized. Extract the correct architecture ZIP and run MarVoiReflex-Install.command for official model setup. Windows latest is unchanged." ./*.zip ./*.txt ./*.json
+    uses: ./.github/workflows/publish-macos-native.yml
+    with:
+      arch: arm64
+      label: Apple Silicon
+  publish_intel:
+    needs: build_intel
+    if: success() && github.ref == 'refs/heads/feature/macos-preview'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-macos-native.yml
+    with:
+      arch: x86_64
+      label: Intel

@@ -70,7 +70,17 @@ class Services:
             flags={'creationflags':subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name=='nt' else {'start_new_session':True}
             self.job=Job();status('正在載入 CPU 模型與素材工具…')
             args=[str(runtime),'-m',str(model),'--host','127.0.0.1','--port',str(model_port),'--device','none','--gpu-layers','0','--no-op-offload','--threads','4','--threads-batch','4','--ctx-size','4096','--batch-size','512','--ubatch-size','128','--parallel','1','--no-context-shift','--jinja','--reasoning','off','--chat-template-kwargs','{"enable_thinking":false}','--cache-ram','512','--offline']
-            if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens','560']
+            threads=4;image_tokens=560
+            if sys.platform=='darwin':
+                threads=max(1,min(4,os.cpu_count() or 4))
+                args[args.index('--threads')+1]=str(threads)
+                args[args.index('--threads-batch')+1]=str(threads)
+                if psutil.virtual_memory().total<10*1024**3:
+                    args[args.index('--cache-ram')+1]='128'
+                    args[args.index('--batch-size')+1]='256'
+                    image_tokens=280
+                write_json(self.root/'logs'/'runtime-profile.json',{'threads':threads,'memory_bytes':psutil.virtual_memory().total,'image_tokens':image_tokens,'cache_ram_mib':int(args[args.index('--cache-ram')+1]),'CPU_only':True})
+            if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens',str(image_tokens)]
             try:
                 for name,cmd in [('model',args),('mcp',[str(node),str(self.assets/'bridge.mjs'),str(self.assets),str(self.root),str(bridge_port)])]:
                     with (self.root/'logs'/(name+'.log')).open('ab') as log:p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,cwd=self.root,env=env,**flags)
@@ -84,7 +94,7 @@ class Services:
                     except (OSError,ValueError,requests.RequestException):pass
                     time.sleep(.1)
                 else:raise RuntimeError('啟動超時，請查看 Data/logs。')
-                self.ready=True;write_json(self.root/'service-status.json',{'ready':True,'CPU_only':True,'threads':4,'ports':[model_port,bridge_port],'pids':{n:p.pid for n,p in self.processes}});status('已就緒 · CPU 模式 · 不使用顯卡')
+                self.ready=True;write_json(self.root/'service-status.json',{'ready':True,'CPU_only':True,'threads':threads,'ports':[model_port,bridge_port],'pids':{n:p.pid for n,p in self.processes}});status('已就緒 · CPU 模式 · 不使用顯卡')
             except BaseException:self.stop();raise
     def stop(self):
         with self.lock:

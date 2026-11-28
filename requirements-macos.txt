@@ -1,7 +1,7 @@
 # Native Python 3.12, macOS 14+ target.
 faster-whisper==1.2.1
 ctranslate2==4.8.2
-av==18.1.0
+av==18.1.1
 onnxruntime==1.23.2
 numpy==1.26.4
 opencc-python-reimplemented==0.1.7

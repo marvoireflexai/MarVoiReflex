@@ -1,0 +1,33 @@
+name: Publish validated macOS preview
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+      label:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MarVoiReflex-macOS-${{ inputs.arch }}
+          path: release
+      - name: Verify and publish independently
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ARCH: ${{ inputs.arch }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum -c "SHA256SUMS-$ARCH.txt"
+          python -c "import json,os; r=json.load(open('validation-'+os.environ['ARCH']+'.json')); assert r['success'] and r['arch']==os.environ['ARCH'] and len(r['passed'])==9"
+          tag="v0.3.3-macos-$ARCH-${GITHUB_SHA:0:7}"
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease --latest=false --title "MarVoiReflex 0.3.3 | macOS $LABEL Preview" --notes "Native $LABEL preview. Nine frozen-application tests on GitHub-hosted macOS using synthetic files and speech. CPU-only; macOS 14+ target, real microphone and Finder interaction not validated. Ad-hoc signed, not Apple notarized. PyAV 18.1.1. Extract the matching ZIP and run MarVoiReflex-Install.command to download official model weights. Windows latest is unchanged." ./*.zip ./*.txt ./*.json
