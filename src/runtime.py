@@ -8,10 +8,10 @@ from voice_engine import VoiceEngine
 
 class Runtime:
     def __init__(self):
-        self.root=data_root();self.root.mkdir(parents=True,exist_ok=True);self.services=Services();self.voice=VoiceEngine();self.ready=False;self.error=None;self.op_lock=threading.RLock();self.state_lock=threading.RLock();self.call_id=None;self.generation=0;self.chat_history=[];self.close_timer=None;self.client_attached=False
+        self.root=data_root();self.root.mkdir(parents=True,exist_ok=True);self.services=Services();self.voice=VoiceEngine();self.ready=False;self.error=None;self.phase='正在準備本機模型…';self.op_lock=threading.RLock();self.state_lock=threading.RLock();self.call_id=None;self.generation=0;self.chat_history=[];self.close_timer=None;self.client_attached=False
     def start(self):
         try:
-            self.services.start()
+            self.services.start(lambda phase:setattr(self,'phase',phase))
             from assistant_modes import Assistant
             from intent import Planner
             class GroundedPlanner(Planner):
@@ -24,7 +24,7 @@ class Runtime:
             if os.environ.get('MARVOI_MODEL_PROFILE','gemma4-e2b-vision')=='gemma4-e2b-vision':
                 from vision_search import VisionSearch
                 self.vision_search=VisionSearch()
-            self.assistant.task.planner=GroundedPlanner(self.root/'sessions'/'task.requests.jsonl',42,date.today());self.ready=True
+            self.assistant.task.planner=GroundedPlanner(self.root/'sessions'/'task.requests.jsonl',42,date.today());self.ready=True;self.phase='就緒'
         except BaseException as e:self.error=str(e);self.services.stop()
     def call_start(self):
         if not self.ready:raise RuntimeError(self.error or '助理仍在啟動。')
@@ -82,6 +82,9 @@ class Runtime:
             for a in assets:
                 m=re.match(r'(.+?)[_ -]+20\d{6}',a['name'])
                 if m and m[1] in text:candidates.add(m[1])
+            for a in assets:
+                stem=Path(a['name']).stem
+                if len(stem)>=2 and stem in text:candidates.add(stem)
             task.planner.grounded_keywords=['']+sorted(candidates,key=len,reverse=True)
             for candidate in sorted(candidates,key=len,reverse=True):
                 if candidate in user and '「'+candidate+'」' not in user:user=user.replace(candidate,'「'+candidate+'」',1)
@@ -108,16 +111,22 @@ class Runtime:
             asr=self.voice.transcribe(content)
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
             if not asr['text']:return {'status':'no_speech','turn_id':turn_id,'metrics':{'asr_s':asr['asr_s'],'server_total_s':time.perf_counter()-began}}
-            start=time.perf_counter();result=self.chat(asr['text']) if mode=='chat' else self.task(asr['text']);processing=time.perf_counter()-start
+            if mode=='task':
+                return {'status':'transcript_review','turn_id':turn_id,'recognized':asr['text'],'low_confidence':asr.get('low_confidence',False)}
+            start=time.perf_counter();result=self.chat(asr['text']);processing=time.perf_counter()-start
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
-            audio=self.voice.synthesize(self.spoken(result));metrics={'asr_s':asr['asr_s'],'assistant_s':processing,'tts_s':audio['tts_s'],'server_total_s':time.perf_counter()-began,'input_audio_s':asr['audio_seconds'],'reply_audio_s':audio['audio_seconds']}
+            try:audio=self.voice.synthesize(self.spoken(result))
+            except Exception:audio=None
+            metrics={'asr_s':asr['asr_s'],'assistant_s':processing,'tts_s':audio['tts_s'] if audio else 0,'server_total_s':time.perf_counter()-began,'input_audio_s':asr['audio_seconds'],'reply_audio_s':audio['audio_seconds'] if audio else 0}
             self.log({'event':'server_turn','at':time.time(),'turn_id':turn_id,'mode':mode,'result_status':result['status'],'recognized_chars':len(asr['text']),'reply_chars':len(result['text']),**metrics})
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
             return {'status':'ok','turn_id':turn_id,'recognized':asr['text'],'result':result,'audio':audio,'metrics':metrics}
         finally:self.op_lock.release()
     def text(self,mode,text):
         if not self.ready:raise RuntimeError(self.error or '助理仍在啟動。')
-        with self.op_lock:return self.chat(text) if mode=='chat' else self.task(text)
+        if not self.op_lock.acquire(blocking=False):raise RuntimeError('BUSY')
+        try:return self.chat(text) if mode=='chat' else self.task(text)
+        finally:self.op_lock.release()
     def control(self,action,plan_id,call_id=None):
         if action not in ['confirm','cancel']:raise ValueError('未知操作。')
         with self.op_lock:

@@ -215,7 +215,16 @@ class Flow:
    result={'status':'clarify','mode':'task','text':spec['error'] or '目前是任務模式，請提供素材資料夾與要做的操作。'};self.history.append({'role':'assistant','content':result['text']});return result
   for attempt in range(2):
    constraints=compile_constraints(spec)
-   r=self.planner.ask([{'role':'user','content':user}],feedback,constraints);entry={'attempt':attempt+1,'raw':r,'validation_error':None,'controller_constraints':constraints,'semantic_contract':spec};self.intent_attempts.append(entry)
+   r=None
+   if attempt==0:
+    plain=re.sub(r'^materials[：:]\s*','',user.strip())
+    simple=re.fullmatch(r'(?:請|幫我|麻煩)?\s*(列出|查看|整理|分類|預覽|找出|搜尋)\s*(全部|所有|本週|這週)?(?:的)?\s*(圖片|照片|圖檔|文案|文字檔|素材|檔案)(?:\s*(?:與|和|及|跟)\s*(?:文案|圖片|照片|文字檔))?(?:[，,。 ]*(?:先給我預覽|先預覽|只預覽|不要搬移))?[。！？!? ]*',plain)
+    if simple and not spec['error'] and spec['actions']:
+     verb=simple[1];action='list' if verb in ('列出','查看') and 'list' in spec['actions'] else 'search' if verb in ('列出','查看','找出','搜尋') else 'preview'
+     if action in spec['actions']:
+      r={'action':action,'folder':self.source_folder(user,action),'keyword':'','kind':spec['kind'] or 'all','date_scope':spec['date_scope'],'start':spec['start'],'end':spec['end'],'reply':''}
+   if r is None:r=self.planner.ask([{'role':'user','content':user}],feedback,constraints)
+   entry={'attempt':attempt+1,'raw':r,'validation_error':None,'controller_constraints':constraints,'semantic_contract':spec};self.intent_attempts.append(entry)
    try:
     self.validate_intent(r,user)
     if r['action']=='clarify':

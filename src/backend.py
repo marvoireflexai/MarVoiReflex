@@ -54,12 +54,12 @@ class Services:
             (self.root/'temp').mkdir(exist_ok=True)
             self.job=Job();status('正在載入 CPU 模型與素材工具…')
             args=[str(runtime),'-m',str(model),'--host','127.0.0.1','--port',str(model_port),'--device','none','--gpu-layers','0','--no-op-offload','--threads','4','--threads-batch','4','--ctx-size','4096','--batch-size','512','--ubatch-size','128','--parallel','1','--no-context-shift','--jinja','--reasoning','off','--chat-template-kwargs','{"enable_thinking":false}','--cache-ram','512','--offline']
-            if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens','280']
+            if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens','560']
             try:
                 for name,cmd in [('model',args),('mcp',[str(node),str(self.assets/'bridge.mjs'),str(self.assets),str(self.root),str(bridge_port)])]:
                     with (self.root/'logs'/(name+'.log')).open('ab') as log:p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,cwd=self.root,env=env,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)
                     self.processes.append((name,p));self.job.add(p)
-                for _ in range(600):
+                for _ in range(1800):
                     if any(p.poll() is not None for _,p in self.processes):raise RuntimeError('啟動未完成，請查看 Data/logs 記錄。')
                     try:
                         state=json.loads((self.root/'bridge-state.json').read_text(encoding='utf-8'))

@@ -1,7 +1,19 @@
 'use strict';
 const liveKey=window.MARVOI_KEY;
 const voiceRuntime={stream:null,ctx:null,node:null,source:null,sink:null,callId:null,ready:false,state:'idle',epoch:0,abort:null,busy:false,speaking:false,replySource:null,recording:false,frames:[],pre:[],voicedMs:0,lastVoice:0,speechAt:0,rate:16000,noise:.003,tailUntil:0,bargedMs:0,metrics:[],taskSeq:0,textBusy:false,replyUrl:null};
-let liveReady=false,livePlan=null,typedSequence=0;
+let liveReady=false,livePlan=null,typedSequence=0,taskBusy=false,loadingText='正在準備本機模型…';
+function syncTextControls(){
+  $('taskSend').disabled=taskBusy;
+  $('chatSend').disabled=voiceRuntime.textBusy;
+  $('taskSend').setAttribute('aria-busy',String(taskBusy));
+}
+function showTaskStatus(text){const node=$('taskFeedback');node.textContent=text;node.title=text;node.scrollIntoView({block:'nearest'});}
+function renderSearchResults(result){
+  const rows=result.visual_results?[...result.visual_results.yes.map(a=>({...a,label:'符合'})),...result.visual_results.uncertain.map(a=>({...a,label:'需確認'}))]:(result.selected||[]).map(name=>({name,label:'搜尋結果'}));
+  const host=$('files');host.replaceChildren();
+  for(const asset of rows){const row=document.createElement('div');row.className='file';const body=document.createElement('div');body.className='file-detail';const name=document.createElement('div');name.className='filename';name.textContent=asset.name;const detail=document.createElement('div');detail.className='path';detail.textContent=asset.label+(asset.reason?' · '+asset.reason:'');body.append(name,detail);row.append(body);host.append(row);}
+  host.hidden=!rows.length;$('empty').hidden=!!rows.length;
+}
 async function api(path,body={},options={}){
   const headers={'X-MarVoi-Key':liveKey,...options.headers};const init={method:options.method||'POST',headers,signal:options.signal};
   if(init.method!=='GET'){if(body instanceof Blob||body instanceof File)init.body=body;else{headers['Content-Type']='application/json';init.body=JSON.stringify(body);}}
@@ -33,7 +45,7 @@ function audioFrame(message){
   if(!callActive||!voiceRuntime.ready||callMuted)return;const a=message.samples,now=performance.now();voiceRuntime.rate=message.rate;
   let sum=0;for(const x of a)sum+=x*x;const rms=Math.sqrt(sum/a.length),ms=a.length/message.rate*1000;
   if(voiceRuntime.speaking){if(rms>Math.max(.045,voiceRuntime.noise*4))voiceRuntime.bargedMs+=ms;else voiceRuntime.bargedMs=0;if(voiceRuntime.bargedMs>240){voiceRuntime.bargedMs=0;interruptReply();}return;}
-  if(voiceRuntime.busy||now<voiceRuntime.tailUntil)return;
+  if(taskBusy||voiceRuntime.textBusy||voiceRuntime.busy||now<voiceRuntime.tailUntil)return;
   const threshold=Math.max(.012,Math.min(.04,voiceRuntime.noise*3));
   if(!voiceRuntime.recording){
     voiceRuntime.pre.push(a);while(voiceRuntime.pre.reduce((n,f)=>n+f.length,0)>message.rate*.35)voiceRuntime.pre.shift();
@@ -41,7 +53,7 @@ function audioFrame(message){
     if(voiceRuntime.voicedMs>=120){voiceRuntime.recording=true;voiceRuntime.frames=voiceRuntime.pre;voiceRuntime.pre=[];voiceRuntime.speechAt=now-voiceRuntime.voicedMs;voiceRuntime.lastVoice=now;liveStatus('recording');}return;
   }
   voiceRuntime.frames.push(a);if(rms>threshold)voiceRuntime.lastVoice=now;
-  if(now-voiceRuntime.lastVoice>=650||now-voiceRuntime.speechAt>=20000)flushVoice();
+  if(now-voiceRuntime.lastVoice>=1100||now-voiceRuntime.speechAt>=20000)flushVoice();
 }
 async function flushVoice(force=false){
   if(!callActive||!voiceRuntime.ready||callMuted||voiceRuntime.busy||voiceRuntime.speaking)return;
@@ -51,9 +63,18 @@ async function flushVoice(force=false){
     const wav=encodeWav(frames,rate);let value;let retryBegan=performance.now();
     while(true){try{value=await api('/api/voice/turn',wav,{headers:{'Content-Type':'audio/wav','X-Voice-Mode':modeAtStart,'X-Call-ID':id},signal:controller.signal});break;}catch(e){if(e.status===409&&e.message==='BUSY'&&performance.now()-retryBegan<8000){await new Promise(r=>setTimeout(r,180));continue;}throw e;}}
     if(!callActive||epoch!==voiceRuntime.epoch||id!==voiceRuntime.callId)return;
-    if(value.status==='cancelled'||value.status==='no_speech'){voiceRuntime.busy=false;liveStatus(callMuted?'muted':'listening');return;}
+    if(value.status==='cancelled'||value.status==='no_speech'){voiceRuntime.busy=false;if(value.status==='no_speech')$('callTranscript').textContent=language==='zh'?'沒有辨識到清楚語音，請再說一次。':'No clear speech detected. Try again.';liveStatus(callMuted?'muted':'listening');return;}
+    if(value.status==='transcript_review'){
+      $('callTranscript').textContent=value.recognized;
+      await endCall();setMode('task');window.MarVoiSidebar?.close();
+      const input=$('taskInput');
+      if(input.value.trim())showTaskStatus('語音辨識結果：'+value.recognized+'。輸入框已有文字，未覆蓋原任務。');
+      else{input.value=value.recognized;showTaskStatus(value.low_confidence?'語音辨識信心較低，請校正文字後再送出。':'已辨識語音，請確認或編輯文字後送出。');}
+      input.focus();return;
+    }
     $('callTranscript').textContent=value.recognized;
     if(modeAtStart==='chat'){message('user',value.recognized);message('assistant',value.result.text);}else{applyTask(value.result);if(value.result.status==='preview')setMode('task');}
+    if(!value.audio){liveStatus(callMuted?'muted':'listening');return;}
     const response=await fetch(value.audio.url,{headers:{'X-MarVoi-Key':liveKey},signal:controller.signal});if(!response.ok)throw new Error('語音檔讀取失敗。');const decodeBegan=performance.now();const audio=await voiceRuntime.ctx.decodeAudioData(await response.arrayBuffer());
     if(!callActive||epoch!==voiceRuntime.epoch)return;
     const speaker=voiceRuntime.ctx.createBufferSource();speaker.buffer=audio;speaker.connect(voiceRuntime.ctx.destination);voiceRuntime.replySource=speaker;voiceRuntime.busy=false;voiceRuntime.speaking=true;liveStatus('speaking');const play=performance.now();speaker.start();
@@ -87,13 +108,40 @@ function applyTask(result){
   if(result.preserve_pending){$('taskFeedback').textContent=result.text;return;}
   livePlan=result.status==='preview'?result.plan_id:null;pending=!!livePlan;const items=result.items||[];renderTaskItems(items);$('files').hidden=!items.length;$('empty').hidden=!!items.length;$('previewBadge').hidden=!pending;$('previewBadge').textContent=items.length+(language==='zh'?' 份':' files');$('confirmation').hidden=!pending;$('taskFeedback').textContent=result.status==='preview'?'':result.text;
   if(result.status!=='preview')$('taskFeedback').title=result.text;
+  if(result.status==='searched'||result.status==='listed')renderSearchResults(result);
 }
-sendChat=async function(){const text=$('chatInput').value.trim();if(!text||voiceRuntime.textBusy||!liveReady)return;voiceRuntime.textBusy=true;$('chatInput').value='';message('user',text);try{const v=await api('/api/text',{mode:'chat',text});message('assistant',v.result.text);}catch(e){message('assistant',shortError(e));}finally{voiceRuntime.textBusy=false;}};
-previewTask=async function(){const text=$('taskInput').value.trim();if(!text||!liveReady)return;if(voiceRuntime.busy||voiceRuntime.speaking)interruptReply();const seq=++typedSequence;$('taskSend').disabled=true;try{const v=await api('/api/text',{mode:'task',text});if(seq===typedSequence)applyTask(v.result);}catch(e){$('taskFeedback').textContent=shortError(e);}finally{$('taskSend').disabled=false;}};
+sendChat=async function(){const input=$('chatInput'),text=input.value.trim();if(!text||voiceRuntime.textBusy)return;
+  if(!liveReady){message('assistant',loadingText);return;}
+  if(taskBusy){message('assistant','目前正在處理任務，請等結果完成後再送出。');return;}
+  voiceRuntime.textBusy=true;syncTextControls();
+  try{const v=await api('/api/text',{mode:'chat',text});message('user',text);message('assistant',v.result.text);if(input.value.trim()===text)input.value='';}
+  catch(e){message('assistant',e.message==='BUSY'?'目前正在處理其他請求，文字已保留，請稍後重試。':shortError(e));}
+  finally{voiceRuntime.textBusy=false;syncTextControls();}
+};
+previewTask=async function(){
+  const input=$('taskInput'),text=input.value.trim();
+  if(!text){input.focus();return;}
+  if(taskBusy){showTaskStatus('上一個任務正在處理，這段文字已保留。');return;}
+  if(!liveReady){showTaskStatus(loadingText+' 文字已保留，模型就緒後可重新送出。');return;}
+  if(voiceRuntime.textBusy){showTaskStatus('對話尚未完成，文字已保留，請稍後重試。');return;}
+  taskBusy=true;syncTextControls();
+  const seq=++typedSequence;
+  showTaskStatus('已送出任務，正在理解指令與檢查素材…');
+  try{
+    if(callActive)await endCall();
+    const v=await api('/api/text',{mode:'task',text});
+    if(seq===typedSequence){
+      applyTask(v.result);
+      if(!['error','clarify','refused'].includes(v.result.status)&&input.value.trim()===text)input.value='';
+    }
+  }catch(e){
+    if(seq===typedSequence)showTaskStatus(e.message==='BUSY'?'模型正在處理上一個請求；任務文字已保留，請稍後重試。':'任務未完成：'+shortError(e)+'。文字已保留，可重新送出。');
+  }finally{taskBusy=false;syncTextControls();input.focus();}
+};
 $('chatSend').onclick=sendChat;$('taskSend').onclick=previewTask;
 async function refreshAssets(){const v=await api('/api/assets',{}, {method:'GET'});assets=v.assets;updateCount();}
 sampleAssets=async function(){if(!liveReady)return;try{await api('/api/assets/demo');livePlan=null;resetPreview();await refreshAssets();$('taskInput').value='整理本週的圖片與文案，先預覽。';$('taskFeedback').textContent='';}catch(e){$('taskFeedback').textContent=shortError(e);}};
-$('demo').onclick=sampleAssets;$('reset').onclick=sampleAssets;$('fileInput').onchange=async e=>{if(!liveReady)return;const files=[...e.target.files];if(files.length>100){$('taskFeedback').textContent='每次最多100份。';return;}try{for(const f of files)await api('/api/assets/import?name='+encodeURIComponent(f.name),f,{headers:{'Content-Type':'application/octet-stream'}});livePlan=null;resetPreview();await refreshAssets();$('taskFeedback').textContent='';}catch(error){$('taskFeedback').textContent=shortError(error);}};
+$('demo').onclick=sampleAssets;$('reset').onclick=sampleAssets;$('fileInput').onchange=async e=>{if(!liveReady)return;const files=[...e.target.files];e.target.value='';if(files.length>100){$('taskFeedback').textContent='每次最多100份。';return;}try{for(const f of files)await api('/api/assets/import?name='+encodeURIComponent(f.name),f,{headers:{'Content-Type':'application/octet-stream'}});livePlan=null;resetPreview();await refreshAssets();$('taskFeedback').textContent='';}catch(error){$('taskFeedback').textContent=shortError(error);}};
 async function playControlAudio(audio,epoch,started){
   if(!audio||!callActive||epoch!==voiceRuntime.epoch||!voiceRuntime.ctx)return;
   const response=await fetch(audio.url,{headers:{'X-MarVoi-Key':liveKey}});if(!response.ok)throw new Error('語音檔讀取失敗。');const decoded=await voiceRuntime.ctx.decodeAudioData(await response.arrayBuffer());
@@ -118,10 +166,21 @@ $('close').onclick=async()=>{await endCall();await api('/api/shutdown').catch(()
 window.addEventListener('pagehide',()=>{voiceRuntime.stream?.getTracks().forEach(t=>t.stop());navigator.sendBeacon('/api/client/detach',JSON.stringify({key:liveKey}));});
 async function initialize(){
   await api('/api/client/attach');
-  for(let i=0;i<180;i++){
-    try{const s=await api('/api/status',{}, {method:'GET'});if(s.error)throw new Error(s.error);if(s.ready){liveReady=true;C.zh.ready='就緒';C.en.ready='Ready';C.zh.label='本機';C.en.label='Local';$('open').disabled=false;copy();await refreshAssets();return;}}catch(e){$('compact').querySelector('.state span:last-child').textContent=shortError(e);if(i>5)throw e;}
-    await new Promise(r=>setTimeout(r,500));
+  for(let i=0;i<600;i++){
+    let status;
+    try{status=await api('/api/status',{}, {method:'GET'});}
+    catch(e){loadingText='正在等待本機服務：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;await new Promise(r=>setTimeout(r,1000));continue;}
+    if(status.error)throw new Error(status.error);
+    loadingText=status.phase||'正在準備本機模型…';
+    if(status.ready){
+      liveReady=true;C.zh.ready='就緒';C.en.ready='Ready';C.zh.label='本機';C.en.label='Local';$('open').disabled=false;copy();syncTextControls();
+      if($('taskInput').value.trim())showTaskStatus('模型已就緒，任務文字已保留，請送出。');
+      try{await refreshAssets();}catch(e){showTaskStatus('素材清單載入失敗：'+shortError(e));}
+      return;
+    }
+    $('compact').querySelector('.state span:last-child').textContent=loadingText;
+    await new Promise(r=>setTimeout(r,1000));
   }
   throw new Error('啟動逾時，請重新開啟 App。');
 }
-updateCallUI();initialize().catch(e=>{$('compact').querySelector('.state span:last-child').textContent=shortError(e);});
+updateCallUI();syncTextControls();initialize().catch(e=>{loadingText='啟動未完成：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;showTaskStatus(loadingText);});

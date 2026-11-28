@@ -29,4 +29,4 @@ $('callMute').onclick=()=>{if(!callActive)return;callMuted=!callMuted;updateCall
 $('callChatMode').onclick=()=>{callMode='chat';updateCallUI();};$('callTaskMode').onclick=()=>{callMode='task';updateCallUI();};
 $('callDemo').onclick=()=>{if(!callActive||callMuted)return;if(callMode==='task'){const phrase='整理本週的圖片與文案，先預覽。';$('callTranscript').textContent=phrase;sampleAssets();$('taskInput').value=phrase;previewTask();setMode('task');}else{const phrase=language==='zh'?'幫我想兩個活動點子。':'Give me two campaign ideas.';$('callTranscript').textContent=phrase;message('user',phrase);message('assistant',language==='zh'?'① 請顧客投票選新品。\n② 邀請顧客分享產品照片。':'① Let customers vote for a new release.\n② Invite customers to share a product photo.');}};
 
-for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();(mode==='chat'?sendChat:previewTask)();}});copy();
+for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.isComposing&&e.keyCode!==229){e.preventDefault();(mode==='chat'?sendChat:previewTask)();}});copy();

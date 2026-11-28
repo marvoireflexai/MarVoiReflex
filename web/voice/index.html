@@ -281,7 +281,7 @@ $('callMute').onclick=()=>{if(!callActive)return;callMuted=!callMuted;updateCall
 $('callChatMode').onclick=()=>{callMode='chat';updateCallUI();};$('callTaskMode').onclick=()=>{callMode='task';updateCallUI();};
 $('callDemo').onclick=()=>{if(!callActive||callMuted)return;if(callMode==='task'){const phrase='整理本週的圖片與文案，先預覽。';$('callTranscript').textContent=phrase;sampleAssets();$('taskInput').value=phrase;previewTask();setMode('task');}else{const phrase=language==='zh'?'幫我想兩個活動點子。':'Give me two campaign ideas.';$('callTranscript').textContent=phrase;message('user',phrase);message('assistant',language==='zh'?'① 請顧客投票選新品。\n② 邀請顧客分享產品照片。':'① Let customers vote for a new release.\n② Invite customers to share a product photo.');}};
 
-for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();(mode==='chat'?sendChat:previewTask)();}});copy();
+for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.isComposing&&e.keyCode!==229){e.preventDefault();(mode==='chat'?sendChat:previewTask)();}});copy();
 </script><script>window.MARVOI_KEY="__SESSION_TOKEN__";window.MARVOI_SHELL="__NATIVE_SHELL__";</script><script src="/live.js"></script><script>// Sidebar presentation only. The existing chat, call and confirmation handlers stay in control.
 (() => {
  'use strict';
@@ -304,7 +304,7 @@ for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>
   $('contextOpen').setAttribute('aria-label',(language==='zh'?'開啟':'Open ')+C[language][mode]);
   $('assetLibrary').setAttribute('aria-label',words[language].openAssets);$('emptyImport').setAttribute('aria-label',words[language].openAssets);
   const status=$('compact').querySelector('.state span:last-child');$('appStateText').textContent=status.textContent;$('appStateText').title=status.textContent;
-  if(document.documentElement.dataset.runtime==='live'&&!liveUnlocked&&typeof liveReady!=='undefined'&&liveReady){liveUnlocked=true;for(const id of ['chatSend','taskSend','import','demo'])$(id).disabled=false;}
+  if(document.documentElement.dataset.runtime==='live'&&!liveUnlocked&&typeof liveReady!=='undefined'&&liveReady){liveUnlocked=true;for(const id of ['import','demo'])$(id).disabled=false;if(typeof syncTextControls==='function')syncTextControls();}
   if(pane==='chat')renderRecent();if(pane==='task')renderAssets();
  }
  function emptyRow(text){const n=document.createElement('p');n.className='library-empty';n.textContent=text;return n;}
@@ -342,7 +342,7 @@ for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>
   const b=$(p+'Tab');
   b.addEventListener('pointerenter',e=>{if(!fine.matches||e.pointerType==='touch')return;clearTimers();openTimer=setTimeout(()=>openLibrary(p),90);});
   b.addEventListener('pointerleave',e=>{clearTimeout(openTimer);if(!panel.contains(e.relatedTarget))deferClose();});
-  b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openLibrary(p,!fine.matches||e.detail===0);},true);
+  b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();if(p==='settings')openLibrary(p,true);else go(p);},true);
   b.addEventListener('focus',()=>{if(!restoring&&keyboard)openLibrary(p);});
   b.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();openLibrary(p,true);}});
  }
@@ -399,7 +399,7 @@ for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>
 </script><script>// Compact composer; dispatches to the existing import, chat, task and call controls.
 (() => {
  'use strict';
- const labels={zh:{chat:'傳送訊息…',task:'描述整理需求…',add:'新增素材',openVoice:'開啟語音通話',startVoice:'開始語音通話',previewVoice:'語音通話預覽',sendChat:'送出訊息',sendTask:'產生分類預覽'},en:{chat:'Message…',task:'Describe a task…',add:'Add assets',openVoice:'Open voice call',startVoice:'Start voice call',previewVoice:'Preview voice call',sendChat:'Send message',sendTask:'Preview file changes'}};
+ const labels={zh:{chat:'傳送訊息…',task:'輸入任務，例如：找出有汽車的照片…',add:'新增素材',openVoice:'開啟語音通話',startVoice:'開始語音通話',previewVoice:'語音通話預覽',sendChat:'送出訊息',sendTask:'送出任務'},en:{chat:'Message…',task:'Describe a task…',add:'Add assets',openVoice:'Open voice call',startVoice:'Start voice call',previewVoice:'Preview voice call',sendChat:'Send message',sendTask:'Send task'}};
  function syncComposers(){
   const words=labels[language],live=document.documentElement.dataset.runtime==='live';
   for(const pane of ['chat','task']){
@@ -422,7 +422,7 @@ for(const mode of ['chat','task'])$(mode+'Input').addEventListener('keydown',e=>
   $(pane+'Voice').onclick=()=>voice(pane,true);
   $(pane+'Input').addEventListener('keydown',event=>{
    if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.keyCode===229||event.ctrlKey||event.altKey||event.metaKey)return;
-   event.preventDefault();const send=$(pane+'Send');if(!send.disabled&&$(pane+'Input').value.trim())send.click();
+   event.preventDefault();if(pane==='task')previewTask();else sendChat();
   });
  }
  const previousCopy=copy;copy=function(...args){const result=previousCopy.apply(this,args);syncComposers();return result;};

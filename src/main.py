@@ -10,6 +10,9 @@ def main():
     if args.atomic_move:
         from atomic_move import main as move
         move(args.atomic_move);return
+    # Local inference must not traverse a system-configured HTTP proxy.
+    no_proxy=os.environ.get('NO_PROXY',os.environ.get('no_proxy',''))
+    os.environ['NO_PROXY']=os.environ['no_proxy']=','.join(filter(None,[no_proxy,'127.0.0.1','localhost']))
     from backend import write_json,Job
     import requests
     root=data_root();root.mkdir(parents=True,exist_ok=True)
@@ -63,7 +66,7 @@ def main():
             if path in ['/live.js','/audio-worklet.js']:
                 p=web/path.lstrip('/');data=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.auth():self.fail(403,'Unauthorized');return
-            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None});return
+            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None});return
             if path=='/api/assets':
                 try:
                     with runtime.op_lock:items=runtime.assistant.task.catalog() if runtime.ready else []

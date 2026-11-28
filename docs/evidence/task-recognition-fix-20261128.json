@@ -1,0 +1,103 @@
+{
+  "source_ui": {
+    "mode": "source",
+    "data_isolated": true,
+    "passed": [
+      "direct_task_tab",
+      "backend_and_ui_ready",
+      "import_images",
+      "enter_submit_and_real_visual_search",
+      "busy_response_keeps_text",
+      "click_retry_and_list",
+      "ime_no_accidental_submission",
+      "preview_exact_files",
+      "confirmed_move_integrity"
+    ],
+    "page_errors": []
+  },
+  "packaged_ui": {
+    "mode": "frozen",
+    "data_isolated": true,
+    "passed": [
+      "direct_task_tab",
+      "backend_and_ui_ready",
+      "import_images",
+      "enter_submit_and_real_visual_search",
+      "busy_response_keeps_text",
+      "click_retry_and_list",
+      "ime_no_accidental_submission",
+      "preview_exact_files",
+      "confirmed_move_integrity"
+    ],
+    "exe_sha256": "94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9",
+    "page_errors": []
+  },
+  "voice_synthetic": {
+    "synthetic_audio": true,
+    "live_microphone_tested": false,
+    "cases": [
+      {
+        "expected": "請找出有汽車的照片。",
+        "recognized": "請找出有汽車的照片。",
+        "status": "transcript_review",
+        "cer": 0.0
+      },
+      {
+        "expected": "整理全部圖片，先給我預覽。",
+        "recognized": "整理全部圖片,先給我預覽。",
+        "status": "transcript_review",
+        "cer": 0.0
+      },
+      {
+        "expected": "搜尋紅色背景的素材。",
+        "recognized": "搜尋紅色背景的素材。",
+        "status": "transcript_review",
+        "cer": 0.0
+      }
+    ],
+    "task_execution_deferred": true
+  },
+  "installer": {
+    "existing_install_update_pass": true,
+    "user_data_preserved": true,
+    "repeated_install_pass": true,
+    "patched_files_verified": 4
+  },
+  "patch": {
+    "base_exe_sha256": "b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f",
+    "new_exe_sha256": "94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9",
+    "files": [
+      {
+        "path": "MarVoiReflex.exe",
+        "size": 15251622,
+        "sha256": "94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9",
+        "old_sha256": "b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f"
+      },
+      {
+        "path": "voice_runtime/base_library.zip",
+        "size": 1332808,
+        "sha256": "73357d404c0b934b43ba4d003132bf1fde2c6da1c7f2db8648805b2b034f6582",
+        "old_sha256": "772e5da6ba515e7dcbee7c039ffcb9fa1d8a491f7f96501772786498e98c81eb"
+      },
+      {
+        "path": "web/voice/index.html",
+        "size": 7346501,
+        "sha256": "a7ce7fc95e47d78e0e9f78c4caccca0bff7e0acab52ab9cfa6ea0fa564e0de35",
+        "old_sha256": "c44a6f08f6fa467da519599086f5327d845cda1bde469bd9dbca4f4c87e63252"
+      },
+      {
+        "path": "web/voice/live.js",
+        "size": 24349,
+        "sha256": "cf55635cf968ab5dc131cb13b777839d07fb8342fd98a59c0a39cde0cdc4f757",
+        "old_sha256": "ecfbbda82425bb8dfc1656243bbb154825a5f4e1f557caf4f27828b3af57a8cc"
+      }
+    ],
+    "zip_size": 20920527,
+    "zip_sha256": "aae2157bb5d126117cf6a6b076c92a827494edf74e6ae5a303a8582550bc143f"
+  },
+  "limitations": [
+    "Windows desktop with 32GB RAM; 8GB and other devices not verified",
+    "Synthetic speech, not live microphone or noisy environment",
+    "Small controlled image fixture set; real-world image accuracy not measured"
+  ]
+}

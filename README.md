@@ -12,16 +12,18 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 ## 下載與啟動｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.0-e2b-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128)
+**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.1-task-fix-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.1-task-fix-20261128)
 
-目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.04 GB，請預留至少 12 GB 磁碟空間。
+目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.06 GB，請預留至少 12 GB 磁碟空間。
 
 1. 下載並雙擊 CMD，工具自動下載與校驗 App、Google 官方模型及視覺權重。
 2. 下載完成自動開啟本機瀏覽器介面，不再預設依賴 WebView2。
 3. 在任務模式匯入圖片，輸入「找出有汽車的照片」或「找出紅色背景的素材」。即使檔名無關，也能依圖片內容辨識。
 4. 使用「整理全部圖片，先給我預覽」進行分類，畫面確認後才搬移。
 
-支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
+支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28-task-fix.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
+
+**v0.2.1 更新：** 既有標準安裝可重新執行新版下載工具，僅下載約 21 MB 修正包，保留模型與素材。任務直接送出、忙碌保留文字、圖片二次複核與語音轉錄審閱已加入。
 
 ## 操作展示
 

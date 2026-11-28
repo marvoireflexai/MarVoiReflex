@@ -11,7 +11,8 @@ class VoiceEngine:
             from opencc import OpenCC
             started=time.perf_counter();self.model=WhisperModel(str(bundle_root()/'assets/asr/faster-whisper-small'),device='cpu',compute_type='int8',cpu_threads=4,num_workers=1,local_files_only=True)
             self.converter=OpenCC('s2twp');self.load_s=time.perf_counter()-started
-            self.voices()
+            try:self.voices()
+            except RuntimeError:self.voice_name=None
     def voices(self):
         import pythoncom,win32com.client
         pythoncom.CoInitialize();speaker=None;token=None
@@ -33,11 +34,12 @@ class VoiceEngine:
         if not np.isfinite(audio).all():raise ValueError('無效音訊。')
         rms=float(np.sqrt(np.mean(audio**2)))
         if rms<.002:return {'text':'','audio_seconds':len(audio)/16000,'asr_s':time.perf_counter()-start,'rms':rms}
-        segments,info=self.model.transcribe(audio,language='zh',beam_size=1,best_of=1,temperature=0,condition_on_previous_text=False,vad_filter=False,without_timestamps=True,max_new_tokens=160,
-            initial_prompt='繁體中文。行銷素材、圖片、文案、本週、整理、預覽、確認、取消、資料夾。',hotwords='素材 圖片 文案 本週 整理 預覽')
+        peak=float(np.max(np.abs(audio)))
+        if peak>0:audio=np.clip(audio*min(4.0,0.8/peak),-1,1)
+        segments,info=self.model.transcribe(audio,language='zh',beam_size=5,best_of=5,temperature=0,condition_on_previous_text=False,vad_filter=False,without_timestamps=True,max_new_tokens=240,initial_prompt='請以繁體中文逐字轉錄，不補充內容。')
         parts=list(segments);text=self.converter.convert(''.join(x.text for x in parts).strip())
         if parts and all(x.no_speech_prob>.85 and x.avg_logprob<-1 for x in parts):text=''
-        return {'text':text,'audio_seconds':len(audio)/16000,'asr_s':time.perf_counter()-start,'rms':rms}
+        return {'text':text,'audio_seconds':len(audio)/16000,'asr_s':time.perf_counter()-start,'rms':rms,'low_confidence':not parts or any(x.avg_logprob<-.8 for x in parts)}
     def synthesize(self,text):
         import pythoncom,win32com.client
         text=re.sub(r'[`#*_]+','',text).strip()
