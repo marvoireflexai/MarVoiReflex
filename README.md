@@ -10,6 +10,12 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 開發目標為 **Windows、CPU、8GB 記憶體、無獨顯**。目前已於 31.76GiB 記憶體主機完成 CPU 模式的特定技術檢查，8GB 實機驗證列於後續測試規劃。
 
+## macOS 預覽版｜Apple Silicon / Intel
+
+**[Mac 版本下載（Releases）](https://github.com/marvoireflexai/MarVoiReflex/releases)** ｜ [原生建置進度](https://github.com/marvoireflexai/MarVoiReflex/actions/workflows/macos-preview.yml) ｜ [安裝說明與原始碼](https://github.com/marvoireflexai/MarVoiReflex/tree/feature/macos-preview)
+
+ARM64 與 Intel x86_64 分別建置、驗收及發布；通過該架構的凍結程式測試後才會出現對應的 macOS ZIP 預覽版。若 Releases 尚無該架構的安裝包，表示仍在建置或驗收，請勿下載 Windows CMD 於 Mac 執行。Mac 版以 Gemma 4 E2B Vision 本機 CPU 推論為基礎，目標 macOS 14+。預覽版不取代 Windows 正式發行版。
+
 ## 下載與啟動｜Gemma 4 E2B Vision
 
 **[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.3-search-speed-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.3-search-speed-20261128)
