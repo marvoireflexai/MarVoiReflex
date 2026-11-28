@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import date
-import json,re,secrets,threading,time,hashlib,os
+import json,re,secrets,threading,time,hashlib,os,sys
 import requests
 from app_paths import data_root,model_url,bundle_root
 from backend import Services,write_json
@@ -168,6 +168,7 @@ class Runtime:
             return result
         except (ValueError,PermissionError) as exc:return {'status':'clarify','mode':'task','text':str(exc),'preserve_pending':True}
     def set_local_scope(self,mode):
+        if sys.platform=='darwin' and mode=='drives':raise PermissionError('macOS 預覽版僅支援個人常用資料夾。')
         if self.presentation and mode=='drives':raise PermissionError('展示模式僅限合成素材。')
         self.search_progress.cancel_local()
         result=self.local_files.set_scope(mode)

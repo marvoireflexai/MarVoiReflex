@@ -53,7 +53,7 @@ function paintLocalStatus(s){
   const active=!!s.mode;
   $('localIndexState').textContent=!active?'尚未啟用':(s.state==='scanning'?'建立索引中':s.state==='complete'?'索引就緒':s.state==='partial'?'部分索引':'索引未完成')+' · '+s.indexed+' 個檔案';
   $('localPersonal').hidden=s.mode==='personal'||s.mode==='drives';
-  $('localDrives').hidden=s.mode==='drives';
+  $('localDrives').hidden=s.mode==='drives'||document.documentElement.dataset.platform==='darwin';
   $('localRefresh').hidden=!active;$('localRevoke').hidden=!active;
   $('localRefresh').disabled=s.state==='scanning';
   $('localRoots').hidden=!active;
@@ -321,6 +321,10 @@ async function initialize(){
     catch(e){loadingText='正在等待本機服務：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;await new Promise(r=>setTimeout(r,1000));continue;}
     if(status.error)throw new Error(status.error);
     loadingText=status.phase||'正在準備本機模型…';
+    if(status.platform==='darwin'){
+      document.documentElement.dataset.platform='darwin';$('localDrives').hidden=true;
+      $('localScopeNote').textContent='不必匯入。搜尋已授權的桌面、下載、文件、圖片、影片及音樂資料夾；尊重 macOS 隱私權限，原始檔案唯讀。';
+    }
     if(status.presentation){
       $('localTitle').textContent='成果展示 · 合成素材';
       $('localScopeNote').textContent='獨立展示環境，只包含六個合成檔案。搜尋與模型推論均真實執行，不讀取個人磁碟。';

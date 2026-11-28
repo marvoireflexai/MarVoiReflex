@@ -41,6 +41,10 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 使用任務頁的本機搜尋授權，直接找出目前帳號可讀取的原始檔案，支援檔名、類型、修改日期及分批圖片內容辨識。首次需建立索引，可撤銷授權並清除索引。原始磁碟檔案僅供唯讀搜尋；詳細範圍、限制及測試見[本機搜尋發行紀錄](docs/releases/2026-11-28-local-search.md)。
 
+## macOS 預覽版（原生建置）
+
+獨立 macOS ARM64 與 Intel x64 預覽版，建置及原生驗收通過才公開發行。詳見 [macOS 使用與建置說明](docs/macos-preview.md)。Windows 正式版本維持原狀。
+
 ## 操作展示
 
 [![素材分類預覽，點擊開啟影片](docs/images/demo-material-preview.png)](docs/demo/MarVoiReflex-Material-Task-20261031.mp4)

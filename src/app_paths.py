@@ -1,9 +1,12 @@
 from pathlib import Path
-import base64,os,sys,subprocess
+import base64,os,sys,subprocess,shlex
 def source_root():return Path(__file__).resolve().parent.parent
 
 def bundle_root():
-    if getattr(sys,'frozen',False):return Path(sys.executable).resolve().parent
+    if getattr(sys,'frozen',False):
+        exe=Path(sys.executable).resolve()
+        if sys.platform=='darwin' and exe.parent.name=='MacOS':return exe.parents[3]
+        return exe.parent
     configured=os.environ.get('MARVOI_ASSETS_ROOT')
     if configured:return Path(configured).expanduser().resolve()
     import json
@@ -18,6 +21,7 @@ def web_root():
 
 def data_root():
     default=bundle_root()/'Data-MarVoiVoice' if getattr(sys,'frozen',False) else source_root()/'.local-data'
+    if sys.platform=='darwin' and getattr(sys,'frozen',False):default=Path.home()/'Library/Application Support/MarVoiReflex/data'
     return Path(os.environ.get('CROSSGEN_DATA_DIR',str(default))).expanduser().resolve()
 
 def model_url():return os.environ['CROSSGEN_MODEL_URL']
@@ -29,6 +33,7 @@ def fixed_move_command(manifest):
     args=[str(Path(sys.executable).resolve())]
     if not getattr(sys,'frozen',False):args.append(str(Path(__file__).with_name('main.py')))
     args+=['--atomic-move',str(manifest),'--data-dir',str(root)]
+    if sys.platform=='darwin':return shlex.join(args)
     literal=lambda x:"'"+x.replace("'","''")+"'"
     # Wait for the actual GUI-subsystem EXE; a bare PowerShell invocation can
     # return while that child is still starting, before its receipt exists.

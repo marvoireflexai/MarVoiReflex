@@ -3,23 +3,32 @@ from pathlib import Path
 from ctypes import wintypes
 import ctypes,hashlib,json,os,stat,sys,time
 from app_paths import data_root
+from platform_support import is_link
 ROOT=data_root();MAT=ROOT/'workspace'/'materials'
-kernel=ctypes.WinDLL('kernel32',use_last_error=True)
-kernel.MoveFileW.argtypes=[wintypes.LPCWSTR,wintypes.LPCWSTR];kernel.MoveFileW.restype=wintypes.BOOL
+if os.name=='nt':
+ kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+ kernel.MoveFileW.argtypes=[wintypes.LPCWSTR,wintypes.LPCWSTR];kernel.MoveFileW.restype=wintypes.BOOL
 def sha(p):
  with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 def check(value):
  raw=ROOT/'workspace'/value
- if MAT.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:raise RuntimeError('Reparse root blocked')
+ if is_link(MAT):raise RuntimeError('Reparse root blocked')
  p=raw.resolve()
  if not p.is_relative_to(MAT.resolve()):raise RuntimeError('Outside materials blocked')
  current=MAT
  for part in raw.relative_to(MAT).parts:
   current=current/part
-  if current.exists() and current.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:raise RuntimeError('Reparse entry blocked')
+  if is_link(current):raise RuntimeError('Reparse entry blocked')
  return p
 def move(src,dst):
- if not kernel.MoveFileW(str(src),str(dst)):raise ctypes.WinError(ctypes.get_last_error())
+ if os.name=='nt':
+  if not kernel.MoveFileW(str(src),str(dst)):raise ctypes.WinError(ctypes.get_last_error())
+ elif sys.platform=='darwin':
+  # Darwin renamex_np(RENAME_EXCL) fails if destination exists, even in a race.
+  fn=ctypes.CDLL(None,use_errno=True).renamex_np;fn.argtypes=[ctypes.c_char_p,ctypes.c_char_p,ctypes.c_uint];fn.restype=ctypes.c_int
+  if fn(os.fsencode(src),os.fsencode(dst),4)!=0:
+   err=ctypes.get_errno();raise OSError(err,os.strerror(err),str(dst))
+ else:raise RuntimeError('Unsupported OS for no-replace move')
 def run(op):
  items=op['items'];moved=[];result={'success':False,'atomic_no_replace':True,'moved':[],'created_dirs':[],'rollback':[],'injected':op.get('inject')}
  try:

@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import date,timedelta
-import hashlib,json,os,re,stat,time,secrets
+import hashlib,json,os,re,stat,time,secrets,sys,subprocess,shlex
+from platform_support import is_link
 import requests
 from intent import Planner
 from semantics import analyze, constraints as compile_constraints
@@ -77,13 +78,15 @@ class Flow:
   self.clock=clock;self.history=[];self.events=[];self.pending=None;self.plans=[];self.intent_attempts=[];self.fault=fault;self.fault_fired=False;self.move_count=0;self.mutations=[];self.session_nonce=secrets.token_hex(12);self.allowed_commands=set();self.allowed_pids=set()
   state=json.loads((ROOT/'bridge-state.json').read_text(encoding='utf-8'));self.headers={'Authorization':'Bearer '+state['token']}
  def checked(self,value):
-  if MAT.exists() and MAT.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:raise ScopeError('授權根資料夾不可是連結')
-  p=Path(value);p=(p if p.is_absolute() else ACTIVE/p).resolve()
+  if is_link(MAT):raise ScopeError('授權根資料夾不可是連結')
+  raw=Path(value);raw=raw if raw.is_absolute() else ACTIVE/raw
+  if '..' in raw.parts or any(is_link(x) for x in (raw,*raw.parents) if x.is_relative_to(MAT)):raise ScopeError('不允許連結或路徑穿越')
+  p=raw.resolve()
   if not p.is_relative_to(MAT.resolve()):raise ScopeError('只允許指定的 materials 資料夾')
   current=MAT
   for part in p.relative_to(MAT.resolve()).parts:
    current=current/part
-   if current.exists() and current.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:raise ScopeError('不允許連結或重解析路徑')
+   if is_link(current):raise ScopeError('不允許連結或重解析路徑')
   return p
  def rel(self,p):return p.relative_to(ACTIVE).as_posix()
  def source_folder(self,user,action):
@@ -274,18 +277,24 @@ class Flow:
    op_id=secrets.token_hex(12);op_path=ROOT/'ops'/(op_id+'.json');op_path.parent.mkdir(exist_ok=True)
    data={'operation_id':op_id,'plan_id':plan_id,'items':items,'inject':self.fault}
    with op_path.open('x',encoding='utf-8') as f:json.dump(data,f,ensure_ascii=False);f.flush();os.fsync(f.fileno())
-   command=fixed_move_command(op_path)
-   self.allowed_commands.add(command)
-   process=self.call('start_process',{'command':command,'timeout_ms':1000,'shell':'cmd.exe'})
-   if process['is_error']:raise MCPError(process['text'])
-   pid=re.search(r'PID\s+(\d+)',process['text']);receipt=op_path.with_suffix('.result.json')
-   if pid:self.allowed_pids.add(int(pid[1]))
-   deadline=time.monotonic()+30
-   while time.monotonic()<deadline:
-    if receipt.exists():break
-    if pid:self.call('read_process_output',{'pid':int(pid[1]),'timeout_ms':1000})
-    time.sleep(.1)
-   else:raise MCPError('搬移器結果未確認，停止後續操作，不宣稱成功')
+   if sys.platform=='darwin':
+    # No model-provided shell command; execute only the fixed helper argv.
+    receipt=op_path.with_suffix('.result.json')
+    subprocess.run(shlex.split(fixed_move_command(op_path)),check=True,timeout=30)
+    if not receipt.is_file():raise MCPError('搬移器未提供驗證結果')
+   else:
+    command=fixed_move_command(op_path)
+    self.allowed_commands.add(command)
+    process=self.call('start_process',{'command':command,'timeout_ms':1000,'shell':'cmd.exe'})
+    if process['is_error']:raise MCPError(process['text'])
+    pid=re.search(r'PID\s+(\d+)',process['text']);receipt=op_path.with_suffix('.result.json')
+    if pid:self.allowed_pids.add(int(pid[1]))
+    deadline=time.monotonic()+30
+    while time.monotonic()<deadline:
+     if receipt.exists():break
+     if pid:self.call('read_process_output',{'pid':int(pid[1]),'timeout_ms':1000})
+     time.sleep(.1)
+    else:raise MCPError('搬移器結果未確認，停止後續操作，不宣稱成功')
    outcome=json.loads(receipt.read_text(encoding='utf-8'));self.last_receipt=outcome
    for parent in outcome['created_dirs']:self.mutations.append({'name':'create_directory','path':parent,'plan_id':plan_id,'confirmed':True})
    for a in items:

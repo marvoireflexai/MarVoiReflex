@@ -1,5 +1,5 @@
 from pathlib import Path
-import ctypes,hashlib,json,os,secrets,socket,subprocess,threading,time
+import ctypes,hashlib,json,os,secrets,socket,subprocess,threading,time,sys,signal
 from ctypes import wintypes
 import psutil,requests
 from app_paths import bundle_root,data_root
@@ -7,7 +7,7 @@ MODEL_SHA='ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd'
 def write_json(p,v):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(v,ensure_ascii=False,indent=2),encoding='utf-8')
 def free_port():
     with socket.socket() as s:s.bind(('127.0.0.1',0));return s.getsockname()[1]
-class Job:
+class WindowsJob:
     """Windows terminates app-owned services if the app itself exits unexpectedly."""
     def __init__(self):
         k=ctypes.WinDLL('kernel32',use_last_error=True);self.k=k
@@ -24,6 +24,21 @@ class Job:
         if not self.k.AssignProcessToJobObject(self.handle,wintypes.HANDLE(int(p._handle))):raise ctypes.WinError(ctypes.get_last_error())
     def close(self):
         if self.handle:self.k.CloseHandle(self.handle);self.handle=None
+class PosixJob:
+    def __init__(self):self.children=[]
+    def add(self,p):self.children.append(p)
+    def close(self):
+        for p in reversed(self.children):
+            if p.poll() is None:
+                try:os.killpg(p.pid,signal.SIGTERM)
+                except ProcessLookupError:pass
+                try:p.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    try:os.killpg(p.pid,signal.SIGKILL)
+                    except ProcessLookupError:pass
+                    p.wait(timeout=3)
+        self.children=[]
+Job=WindowsJob if os.name=='nt' else PosixJob
 class Services:
     def __init__(self):self.processes=[];self.job=None;self.ready=False;self.root=data_root();self.assets=bundle_root()/'assets';self.lock=threading.RLock()
     def start(self,status=lambda x:None):
@@ -34,11 +49,11 @@ class Services:
             material=self.root/'workspace'/'materials'
             if material.is_symlink() or material.is_junction():raise RuntimeError('素材工作區不可是連結')
             status('正在檢查本機模型…');gemma=os.environ.get('MARVOI_MODEL_PROFILE','gemma4-e2b-vision')=='gemma4-e2b-vision';projector=None;expected=MODEL_SHA
-            runtime=self.assets/'runtime'/'llama-server.exe'
+            runtime=self.assets/'runtime'/('llama-server.exe' if os.name=='nt' else 'llama-server')
             model=self.assets/'models'/'MiniCPM5-2B-Q4_K_M.gguf'
             if gemma:
                 g=Path(os.environ.get('MARVOI_GEMMA_ROOT',str(self.assets/'gemma4-e2b'))).resolve()
-                model=g/'gemma-4-E2B_q4_0-it.gguf';projector=g/'gemma-4-E2B-it-mmproj.gguf';runtime=g/'runtime'/'llama-server.exe'
+                model=g/'gemma-4-E2B_q4_0-it.gguf';projector=g/'gemma-4-E2B-it-mmproj.gguf';runtime=g/'runtime'/('llama-server.exe' if os.name=='nt' else 'llama-server')
                 expected='fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634'
                 with projector.open('rb') as f:projector_hash=hashlib.file_digest(f,'sha256').hexdigest()
                 if projector_hash!='021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14':raise RuntimeError('Gemma 視覺權重校驗失敗。')
@@ -47,17 +62,18 @@ class Services:
             model_port=free_port();bridge_port=free_port()
             while bridge_port==model_port:bridge_port=free_port()
             os.environ['CROSSGEN_MODEL_URL']=f'http://127.0.0.1:{model_port}';os.environ['CROSSGEN_BRIDGE_URL']=f'http://127.0.0.1:{bridge_port}'
-            node=self.assets/'node'/'node.exe'
+            node=self.assets/'node'/('node.exe' if os.name=='nt' else 'node')
             cfg=self.root/'home'/'.claude-server-commander'/'config.json'
-            write_json(cfg,{'allowedDirectories':[str(material)],'telemetryEnabled':False,'pendingWelcomeOnboarding':False,'welcomeOnboardingEligible':False,'defaultShell':'cmd.exe','fileReadLineLimit':1000,'fileWriteLineLimit':50,'blockedCommands':['format','diskpart','shutdown','reboot','netsh','reg','del','rmdir']})
+            write_json(cfg,{'allowedDirectories':[str(material)],'telemetryEnabled':False,'pendingWelcomeOnboarding':False,'welcomeOnboardingEligible':False,'defaultShell':'cmd.exe' if os.name=='nt' else '/bin/sh','fileReadLineLimit':1000,'fileWriteLineLimit':50,'blockedCommands':['format','diskpart','shutdown','reboot','netsh','reg','del','rmdir']})
             env=dict(os.environ,USERPROFILE=str(self.root/'home'),HOME=str(self.root/'home'),APPDATA=str(self.root/'home'/'AppData'/'Roaming'),LOCALAPPDATA=str(self.root/'home'/'AppData'/'Local'),TEMP=str(self.root/'temp'),TMP=str(self.root/'temp'),DESKTOP_COMMANDER_DISABLE_TELEMETRY='1',CUDA_VISIBLE_DEVICES='-1',ROCR_VISIBLE_DEVICES='',GGML_VK_VISIBLE_DEVICES='',GGML_BACKEND_PATH=str(runtime.parent),GGML_BACKEND_DL_PATH=str(runtime.parent))
             (self.root/'temp').mkdir(exist_ok=True)
+            flags={'creationflags':subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS} if os.name=='nt' else {'start_new_session':True}
             self.job=Job();status('正在載入 CPU 模型與素材工具…')
             args=[str(runtime),'-m',str(model),'--host','127.0.0.1','--port',str(model_port),'--device','none','--gpu-layers','0','--no-op-offload','--threads','4','--threads-batch','4','--ctx-size','4096','--batch-size','512','--ubatch-size','128','--parallel','1','--no-context-shift','--jinja','--reasoning','off','--chat-template-kwargs','{"enable_thinking":false}','--cache-ram','512','--offline']
             if projector:args+=['--mmproj',str(projector),'--no-mmproj-offload','--image-max-tokens','560']
             try:
                 for name,cmd in [('model',args),('mcp',[str(node),str(self.assets/'bridge.mjs'),str(self.assets),str(self.root),str(bridge_port)])]:
-                    with (self.root/'logs'/(name+'.log')).open('ab') as log:p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,cwd=self.root,env=env,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)
+                    with (self.root/'logs'/(name+'.log')).open('ab') as log:p=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,cwd=self.root,env=env,**flags)
                     self.processes.append((name,p));self.job.add(p)
                 for _ in range(1800):
                     if any(p.poll() is not None for _,p in self.processes):raise RuntimeError('啟動未完成，請查看 Data/logs 記錄。')

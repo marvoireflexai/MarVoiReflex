@@ -1,5 +1,5 @@
 from pathlib import Path
-import io,json,re,secrets,threading,time,wave
+import io,json,re,secrets,threading,time,wave,sys,subprocess
 from app_paths import bundle_root,data_root
 from speech_pipeline import MoonshineAdapter,normalized,speech_present
 
@@ -37,6 +37,11 @@ class VoiceEngine:
         clean=re.sub(r'[^\S\n]+',' ',re.sub(r'[\x60#*_]+','',text)).strip()[:220]
         return [piece[i:i+70] for piece in re.split(r'(?<=[。！？!?；;])\s*|\n+',clean) if piece for i in range(0,len(piece),70)]
     def voices(self):
+        if sys.platform=='darwin':
+            output=subprocess.check_output(['/usr/bin/say','-v','?'],text=True,timeout=15)
+            names=[m[1].strip() for line in output.splitlines() if (m:=re.match(r'^(.*?)\s+(zh_(?:TW|CN|HK))\s+#',line))]
+            if not names:raise RuntimeError('請在 macOS 系統設定安裝中文朗讀語音。')
+            self.voice_name=next((n for n in names if n.startswith('Mei-Jia')),names[0]);return names
         import pythoncom,win32com.client
         pythoncom.CoInitialize();speaker=None;token=None
         try:
@@ -85,6 +90,7 @@ class VoiceEngine:
             if primary:return result(primary,'moonshine',True)
             raise
     def synthesize(self,text):
+        if sys.platform=='darwin':return self.mac_synthesize(text)
         import pythoncom,win32com.client
         text=re.sub(r'[`#*_]+','',text).strip()
         if not text:return None
@@ -107,6 +113,22 @@ class VoiceEngine:
         with wave.open(str(target),'rb') as f:seconds=f.getnframes()/f.getframerate()
         self.trim_cache(root)
         return {'id':name,'url':'/api/audio/'+name,'tts_s':time.perf_counter()-start,'audio_seconds':seconds,'voice':self.voice_name}
+    def mac_synthesize(self,text):
+        text=re.sub(r'[\x60#*_]+','',text).strip()[:220]
+        if not text:return None
+        if not self.voice_name:self.voices()
+        root=data_root()/'audio';root.mkdir(parents=True,exist_ok=True)
+        name=secrets.token_hex(16)+'.wav';target=root/name;start=time.perf_counter()
+        raw=target.with_suffix('.aiff');words=target.with_suffix('.txt')
+        try:
+            words.write_text(text,encoding='utf-8')
+            subprocess.run(['/usr/bin/say','-v',self.voice_name,'-f',str(words),'-o',str(raw)],check=True,timeout=30)
+            subprocess.run(['/usr/bin/afconvert','-f','WAVE','-d','LEI16@22050',str(raw),str(target)],check=True,timeout=30)
+            with wave.open(str(target),'rb') as f:seconds=f.getnframes()/f.getframerate()
+            self.trim_cache(root)
+            return {'id':name,'url':'/api/audio/'+name,'tts_s':time.perf_counter()-start,'audio_seconds':seconds,'voice':self.voice_name}
+        finally:
+            words.unlink(missing_ok=True);raw.unlink(missing_ok=True)
     @staticmethod
     def trim_cache(root):
         files=sorted((p for p in root.glob('*.wav') if re.fullmatch(r'[0-9a-f]{32}\.wav',p.name)),key=lambda p:p.stat().st_mtime,reverse=True);total=0

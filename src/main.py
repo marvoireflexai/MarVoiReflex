@@ -13,6 +13,10 @@ def main():
         os.environ['CROSSGEN_DATA_DIR']=str(session_data)
     elif args.data_dir:os.environ['CROSSGEN_DATA_DIR']=str(Path(args.data_dir).resolve())
     from app_paths import data_root,bundle_root,web_root
+    from platform_support import MAC,lock_instance,open_browser
+    if MAC:
+        os.umask(0o077)
+        if args.native:raise ValueError('macOS preview uses the local browser interface.')
     if args.atomic_move:
         from atomic_move import main as move
         move(args.atomic_move);return
@@ -27,11 +31,10 @@ def main():
     if args.stop:
         state=json.loads((root/'connection.json').read_text(encoding='utf-8'));requests.post(state['origin']+'/api/shutdown',headers={'X-MarVoi-Key':state['token']},json={},timeout=5);return
     # A second launch shares the existing app instead of loading another model.
-    import msvcrt
     instance=(root/'instance.lock').open('a+b')
     if instance.seek(0,2)==0:instance.write(b'0');instance.flush()
     instance.seek(0)
-    try:msvcrt.locking(instance.fileno(),msvcrt.LK_NBLCK,1)
+    try:lock_instance(instance)
     except OSError:
         if args.no_browser:raise RuntimeError('此資料夾的助理已經啟動。')
         state=json.loads((root/'connection.json').read_text(encoding='utf-8'))
@@ -41,7 +44,7 @@ def main():
         else:
             parsed=urllib.parse.urlsplit(state['url'])
             if parsed.scheme!='http' or parsed.hostname!='127.0.0.1' or state['url']!=state['origin']+'/?launch='+state['token']:raise RuntimeError('Invalid local session URL.')
-            os.startfile(state['url'])
+            open_browser(state['url'])
         return
     from runtime import Runtime
     runtime=Runtime(presentation_files);token=secrets.token_hex(24);web=web_root();browser_job=None;close_timer=None;native_shell=None
@@ -72,7 +75,7 @@ def main():
             if path in ['/live.js','/audio-worklet.js']:
                 p=web/path.lstrip('/');data=p.read_bytes();self.send_response(200);self.send_header('Content-Type','application/javascript; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);return
             if not self.auth():self.fail(403,'Unauthorized');return
-            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'presentation':runtime.presentation,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
+            if path=='/api/status':self.reply(200,{'ready':runtime.ready,'error':runtime.error,'phase':runtime.phase,'presentation':runtime.presentation,'platform':sys.platform,'CPU_only':True,'scope':'materials','voice_ready':runtime.voice.model is not None or runtime.voice.moonshine_ready,'asr':runtime.voice.asr_name,'advanced_configured':bool(__import__('model_router').local_endpoint(os.environ.get('MARVOI_ADVANCED_URL')))});return
             if path=='/api/search/status':self.reply(200,{'progress':runtime.search_progress.status()});return
             if path=='/api/local/status':self.reply(200,runtime.local_files.status());return
             if path=='/api/assets':
@@ -192,6 +195,10 @@ def main():
         if browser_job:browser_job.close();browser_job=None
         if native_shell:native_shell.destroy()
         write_json(root/'stopped.json',{'at':time.time(),'stopped':True})
+    if MAC:
+        import signal
+        signal.signal(signal.SIGTERM,lambda *_:threading.Thread(target=shutdown,daemon=True).start())
+        signal.signal(signal.SIGINT,lambda *_:threading.Thread(target=shutdown,daemon=True).start())
     write_json(root/'connection.json',{'origin':origin,'url':launch,'token':token,'pid':os.getpid(),'started':time.time(),'native':bool(args.native and not args.no_browser)})
     threading.Thread(target=runtime.start,daemon=True).start();atexit.register(runtime.stop)
     server_thread=threading.Thread(target=server.serve_forever,kwargs={'poll_interval':.2},daemon=True);server_thread.start()
@@ -201,7 +208,7 @@ def main():
             native_shell=NativeShell(launch,root,shutdown)
             native_shell.run()
         else:
-            if not args.no_browser:os.startfile(launch)
+            if not args.no_browser:open_browser(launch)
             server_thread.join()
     finally:
         shutdown();runtime.stop();server.server_close()
@@ -212,5 +219,5 @@ if __name__=='__main__':
         import traceback
         from app_paths import data_root
         root=data_root();(root/'logs').mkdir(parents=True,exist_ok=True);(root/'logs/startup-error.txt').write_text(traceback.format_exc(),encoding='utf-8')
-        if not any(flag in sys.argv for flag in ['--no-browser','--atomic-move','--stop']):ctypes=__import__('ctypes');ctypes.windll.user32.MessageBoxW(None,'啟動未完成，請查看 Data-MarVoiVoice/logs/startup-error.txt。','MarVoiReflex',16)
+        if os.name=='nt' and not any(flag in sys.argv for flag in ['--no-browser','--atomic-move','--stop']):ctypes=__import__('ctypes');ctypes.windll.user32.MessageBoxW(None,'啟動未完成，請查看 Data-MarVoiVoice/logs/startup-error.txt。','MarVoiReflex',16)
         sys.exit(1)

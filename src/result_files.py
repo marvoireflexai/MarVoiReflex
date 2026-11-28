@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib,io,os,secrets,stat,threading
 from local_files import EXT,IMAGE,safe_stat,plain_path
+from platform_support import open_target,verify_mac_handle
 
 MAX_DOWNLOAD=128*1024**2
 OPEN_EXT={'.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.txt','.md','.csv','.rtf','.odt','.ods','.odp','.png','.jpg','.jpeg','.webp','.gif','.bmp','.tif','.tiff','.heic','.psd','.ai','.indd','.fig','.mp4','.mov','.m4v','.avi','.mkv','.mp3','.wav','.m4a','.flac'}
@@ -25,6 +26,7 @@ def verified_read(p,check,limit,expected=None):
             if actual.startswith('\\\\?\\'):actual=actual[4:]
             if os.path.normcase(actual)!=os.path.normcase(str(p)):raise PermissionError('檔案路徑已變更。')
             check(Path(actual))
+        verify_mac_handle(f,p,check)
         data=f.read(limit+1);after=os.fstat(f.fileno())
         if len(data)>limit or before.st_size!=len(data) or before.st_mtime_ns!=after.st_mtime_ns or before.st_size!=after.st_size:raise PermissionError('檔案已變更，請重新搜尋。')
     if expected and hashlib.sha256(data).hexdigest()!=expected:raise PermissionError('原始檔案已變更，請重新搜尋。')
@@ -81,7 +83,7 @@ class ResultFiles:
                         if hashlib.file_digest(f,'sha256').hexdigest()!=expected:raise PermissionError('檔案已變更。')
                 if source=='local':self.local._result_path(id)
                 else:self._workspace_path(id)
-                os.startfile(str(p),'open')
+                open_target(p)
                 return {'ok':True,'name':p.name}
             if action=='download':
                 data=verified_read(p,check,MAX_DOWNLOAD,expected);mime='application/octet-stream'

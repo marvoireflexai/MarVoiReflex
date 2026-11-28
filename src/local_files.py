@@ -4,13 +4,14 @@ No administrator privilege, network shares, arbitrary shell, or model-controlled
 """
 from pathlib import Path
 from datetime import datetime,date,timedelta,time as dt_time
-import os,re,stat,sqlite3,threading,time,secrets,json,hashlib
+import os,re,stat,sqlite3,threading,time,secrets,json,hashlib,sys
+from platform_support import open_target,verify_mac_handle
 from contextlib import contextmanager
 from search_progress import SearchCancelled
 
 IMAGE={'.jpg','.jpeg','.png','.webp'}
 EXT=IMAGE|{'.gif','.bmp','.tif','.tiff','.svg','.heic','.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.txt','.md','.csv','.rtf','.odt','.ods','.odp','.psd','.ai','.indd','.fig','.mp4','.mov','.m4v','.avi','.mkv','.mp3','.wav','.m4a','.flac'}
-SKIP_DIR={'windows','program files','program files (x86)','programdata','system volume information','$recycle.bin','recovery','perflogs','documents and settings','appdata','application data','local settings','node_modules','__pycache__','data-marvoivoice','marvoireflex','mvr-presentation','windowsapps','msocache','users','profiles','cache','caches','browser','credentials','secrets','private keys'}
+SKIP_DIR={'windows','program files','program files (x86)','programdata','system volume information','$recycle.bin','recovery','perflogs','documents and settings','appdata','application data','local settings','node_modules','__pycache__','data-marvoivoice','marvoireflex','mvr-presentation','library','applications','system','private','volumes','windowsapps','msocache','users','profiles','cache','caches','browser','credentials','secrets','private keys'}
 SECRET=re.compile(r'password|passwd|credential|secret|token|api[-_ ]?key|private[-_ ]?key|wallet|seed[-_ ]?phrase|密碼|憑證|金鑰|私鑰|助記詞',re.I)
 ATTR_SKIP=0x2|0x4|0x400|0x1000|0x40000|0x400000
 FOLDERS={'desktop':'桌面','downloads':'下載','documents':'文件','pictures':'圖片','videos':'影片','music':'音樂'}
@@ -20,7 +21,7 @@ def known_folders():
     home=Path.home()
     out={}
     for k,guid in KNOWN.items():
-        p=home/k.capitalize()
+        p=home/('Movies' if sys.platform=='darwin' and k=='videos' else k.capitalize())
         if os.name=='nt':
             try:
                 import ctypes,uuid
@@ -61,7 +62,7 @@ def discover_roots(mode):
                 if ctypes.windll.kernel32.GetDriveTypeW(p.anchor) not in (2,3):continue
             out.append((p,k))
     home=Path.home()
-    if plain_path(home) and home.is_dir():out.append((home,'profile'))
+    if os.name=='nt' and plain_path(home) and home.is_dir():out.append((home,'profile'))
     if mode=='drives' and os.name=='nt':
         import ctypes
         mask=ctypes.windll.kernel32.GetLogicalDrives()
@@ -275,6 +276,7 @@ class LocalFiles:
                 if actual.startswith('\\\\?\\'):actual=actual[4:]
                 if os.path.normcase(actual)!=os.path.normcase(str(p)):raise PermissionError('實際檔案路徑已變更。')
                 self.checked(Path(actual))
+            verify_mac_handle(f,p,self.checked)
             data=f.read(limit+1)
             if len(data)>limit:raise ValueError('檔案大小超過讀取上限。')
             return data
@@ -301,8 +303,7 @@ class LocalFiles:
     def reveal(self,id):
         with self.lock:
             p=self._result_path(id)
-            if os.name!='nt':raise RuntimeError('僅支援 Windows 檔案總管。')
-            os.startfile(str(p.parent))
+            open_target(p,reveal=True)
             return {'ok':True}
     def close(self):
         with self.lock:self.epoch+=1;self.results={};self.last=None
