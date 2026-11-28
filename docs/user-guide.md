@@ -16,7 +16,7 @@
 - 本機 UI 使用 Chrome／Edge 等現代瀏覽器；避免原生 WebView2 白畫面。原生視窗為選用的 --native 模式。
 - 語音辨識使用 faster-whisper small INT8；朗讀須有 Windows 中文 SAPI 語音。
 - 圖片內容搜尋單次最多 40 張；不支援指定路徑或複合日期條件。辨識結果不會自動搬移檔案。
-- 32GB 桌機驗證不等同 8GB、網咖、其他硬體的相容性驗收。受管理電腦須遵守管理員的執行及網路政策。
+- 32GB 桌機的驗證結果尚不能代表 8GB 記憶體裝置、其他硬體配置及受管理的 Windows 環境之相容性。受管理電腦須遵守管理員的執行及網路政策。
 
 App 安裝在使用者的 LocalAppData 下 MarVoiReflex/20261128-E2B，資料在各安裝目錄的 Data-MarVoiVoice；舊安裝不會被覆寫。若網路受限，請檢查安裝日誌並聯絡管理員。不要公開 connection.json（含本機連線權杖）。
 

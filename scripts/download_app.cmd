@@ -118,7 +118,7 @@ try{
     $success=$true
 }catch{
     Write-Host ('安裝未完成：'+$_.Exception.Message) -ForegroundColor Red
-    Write-Host '原有資料未覆寫。若網咖管理政策阻擋，請由管理員確認。'
+    Write-Host '原有資料未覆寫。若裝置管理政策阻擋，請由管理員確認。'
 }finally{
     if($success -and (Test-Path -LiteralPath $stage)){try{Remove-Item -LiteralPath $stage -Recurse -Force}catch{}}
     if($transcript){Write-Host ('記錄：'+$log);try{Stop-Transcript | Out-Null}catch{}}
