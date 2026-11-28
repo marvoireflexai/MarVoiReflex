@@ -26,9 +26,9 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 完整 App 超過 GitHub 單檔上限，因此分成約 693MB 的 App ZIP 與約 1.56GB 的模型檔。兩份檔案都提供公開下載，無需 GitHub 帳號。GitHub 自動產生的 **Source code** 是開發用原始碼。此版使用 CPU，8GB 實機與跨電腦相容性驗證仍待完成。
 
-### 白畫面／網咖相容模式（2026-11-28）
+### 白畫面／瀏覽器相容模式（2026-11-28）
 
-若 EXE 能開啟但視窗全白，可先關閉原 App，從 [瀏覽器相容工具](scripts/MarVoiReflex-Browser-Mode.cmd) 頁面按 Download raw file，將 CMD 存到 `MarVoiReflex.exe` 同一資料夾後雙擊。此工具使用既有發行版的本機服務與預設瀏覽器，不必重新下載模型，也不需要變更 Windows 安全性設定；尚未完成網咖實機驗證。若管理政策禁止執行，請聯絡管理員。不要公開 `Data-MarVoiVoice/connection.json`（含本機連線權杖）。
+若 EXE 能開啟但視窗全白，可先關閉原 App，從 [瀏覽器相容工具](scripts/MarVoiReflex-Browser-Mode.cmd) 頁面按 Download raw file，將 CMD 存到 `MarVoiReflex.exe` 同一資料夾後雙擊。此工具使用既有發行版的本機服務與預設瀏覽器，不必重新下載模型，也不需要變更 Windows 安全性設定；尚未完成跨裝置及受管理的 Windows 環境相容性驗證。若管理政策禁止執行，請聯絡管理員。不要公開 `Data-MarVoiVoice/connection.json`（含本機連線權杖）。
 
 ## 操作展示
 

@@ -56,6 +56,6 @@ try {
     exit 0
 } catch {
     Write-Host ('啟動未完成：' + $_.Exception.Message) -ForegroundColor Red
-    Write-Host '若網咖管理政策禁止執行本機服務或 CMD，請由管理員確認，不要關閉安全性功能。'
+    Write-Host '若裝置管理政策禁止執行本機服務或 CMD，請由管理員確認，不要關閉安全性功能。'
     exit 1
 }
