@@ -12,7 +12,7 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 ## 下載與啟動｜Gemma 4 E2B Vision
 
-**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.1-task-fix-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.1-task-fix-20261128)
+**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.0-local-search-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.3.0-local-search-20261128)
 
 目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.06 GB，請預留至少 12 GB 磁碟空間。
 
@@ -21,13 +21,17 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 3. 在任務模式匯入圖片，輸入「找出有汽車的照片」或「找出紅色背景的素材」。即使檔名無關，也能依圖片內容辨識。
 4. 使用「整理全部圖片，先給我預覽」進行分類，畫面確認後才搬移。
 
-支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28-task-fix.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
+支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28-local-search.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
 
-**v0.2.1 更新：** 既有標準安裝可重新執行新版下載工具，僅下載約 21 MB 修正包，保留模型與素材。任務直接送出、忙碌保留文字、圖片二次複核與語音轉錄審閱已加入。
+**v0.3.0 更新：** 既有標準安裝可重新執行新版下載工具，只需約 21 MB 更新包。任務頁一次性啟用個人檔案搜尋或擴及本機磁碟，即可直接搜尋原始檔案，無須匯入。
 
 ## 多引擎本機語音架構（原始碼更新）
 
-已加入 Moonshine Mandarin 增量辨識、Whisper 複核、Silero VAD、選用 Gemma 4 E4B 路由與 E2B 備援、逐句語音合成及本機素材索引。開發環境實測及啟用方式見[多引擎語音架構](docs/local-voice-pipeline.md)。目前 Windows v0.2.1 發行包尚未包含本次原始碼更新。
+已加入 Moonshine Mandarin 增量辨識、Whisper 複核、Silero VAD、選用 Gemma 4 E4B 路由與 E2B 備援、逐句語音合成及本機素材索引。開發環境實測及啟用方式見[多引擎語音架構](docs/local-voice-pipeline.md)。v0.3.0 標準 Windows 封裝提供本機搜尋與基礎離線引擎；選用語音及向量權重另行配置。
+
+## 免匯入本機搜尋
+
+使用任務頁的本機搜尋授權，直接找出目前帳號可讀取的原始檔案，支援檔名、類型、修改日期及分批圖片內容辨識。首次需建立索引，可撤銷授權並清除索引。原始磁碟檔案僅供唯讀搜尋；詳細範圍、限制及測試見[本機搜尋發行紀錄](docs/releases/2026-11-28-local-search.md)。
 
 ## 操作展示
 

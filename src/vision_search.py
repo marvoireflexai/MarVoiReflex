@@ -15,17 +15,19 @@ def is_visual_search(text):
     if re.search(r'所有|全部|本週|這週|上週|日期',text) and not re.search(r'有.+的|包含|背景|配色|出現|拍到|畫面|適合|看起來|長得像',text):return False
     return bool(re.search(r'圖片|照片|相片|素材|圖檔|主視覺|海報',text) and re.search(r'有.+的|包含|背景|配色|出現|拍到|畫面|適合|看起來|長得像|找(?:出|一下|找)?\s*[^，。]{1,50}的(?:圖片|照片|相片|素材|圖檔|主視覺|海報)',text))
 class VisionSearch:
-    def __init__(self):
+    def __init__(self,persistent=True):
         self.session=requests.Session()
         self.session.trust_env=False
         self.cache={};self.index=None
-        try:self.index=VisionIndex(data_root()/'index'/'vision.sqlite3')
+        try:self.index=VisionIndex(data_root()/'index'/'vision.sqlite3') if persistent else None
         except Exception:pass
-    def classify(self,path,query,expected_hash):
+    def classify(self,path,query,expected_hash,data=None):
         from PIL import Image,ImageOps
         path=Path(path)
-        if path.stat().st_size>32*1024**2:raise ValueError('單張圖片超過32MB')
-        data=path.read_bytes()
+        if data is None:
+            if path.stat().st_size>32*1024**2:raise ValueError('單張圖片超過32MB')
+            data=path.read_bytes()
+        if len(data)>32*1024**2:raise ValueError('單張圖片超過32MB')
         sha=hashlib.sha256(data).hexdigest()
         if sha!=expected_hash:raise ValueError('圖片內容已改變，請重新搜尋')
         revision='e2b-560-double-check-v1'

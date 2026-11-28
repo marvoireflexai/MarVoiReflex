@@ -2,14 +2,16 @@ from pathlib import Path
 from datetime import date
 import json,re,secrets,threading,time,hashlib,os
 import requests
-from app_paths import data_root,model_url
+from app_paths import data_root,model_url,bundle_root
 from backend import Services,write_json
 from voice_engine import VoiceEngine
 from model_router import complete,complex_text,local_endpoint
+from local_files import LocalFiles,wants_search,workspace_request,blocked_request,parse_query,IMAGE as LOCAL_IMAGES
 
 class Runtime:
     def __init__(self):
         self.root=data_root();self.root.mkdir(parents=True,exist_ok=True);self.services=Services();self.voice=VoiceEngine();self.ready=False;self.error=None;self.phase='正在準備本機模型…';self.op_lock=threading.RLock();self.state_lock=threading.RLock();self.call_id=None;self.generation=0;self.speech_chunks=None;self.speech_lock=threading.RLock();self.chat_history=[];self.close_timer=None;self.client_attached=False
+        self.local_files=LocalFiles(self.root,excluded=(bundle_root(),));self.local_vision=None
     def start(self):
         try:
             self.services.start(lambda phase:setattr(self,'phase',phase))
@@ -24,7 +26,7 @@ class Runtime:
             self.vision_search=None;self.semantic_assets=None
             if os.environ.get('MARVOI_MODEL_PROFILE','gemma4-e2b-vision')=='gemma4-e2b-vision':
                 from vision_search import VisionSearch
-                self.vision_search=VisionSearch()
+                self.vision_search=VisionSearch();self.local_vision=VisionSearch(persistent=False)
                 try:
                     from semantic_assets import SemanticAssets
                     self.semantic_assets=SemanticAssets()
@@ -73,6 +75,13 @@ class Runtime:
             if not self.semantic_assets:return {'status':'clarify','mode':'task','text':'素材索引尚未就緒。','preserve_pending':True}
             return self.semantic_assets.build(task.catalog(),task.checked)
         from vision_search import is_visual_search
+        if not workspace_request(text):
+            if self.local_files.mode and wants_search(text):
+                return self.local_search(text)
+            if not self.local_files.mode and wants_search(text) and re.search(r'本機|電腦|桌面|下載|磁碟|[A-Za-z]槽|文件資料夾|圖片資料夾',text):
+                return {'status':'clarify','mode':'task','text':'請先在任務頁啟用本機檔案搜尋，一次授權後不必匯入檔案。','preserve_pending':True}
+            if self.local_files.mode and blocked_request(text):
+                return {'status':'clarify','mode':'task','text':'本機檔案搜尋目前為唯讀。若要整理已匯入素材，請明確指定工作區；原始磁碟檔案不會被修改。','preserve_pending':True}
         if is_visual_search(text):
             if not self.vision_search:return {'status':'clarify','mode':'task','text':'圖片內容搜尋需要 Gemma 4 E2B 視覺版；目前使用的是文字模型。','preserve_pending':True}
             if paths_in(text) or re.search(r'本週|這週|上週|下週|今天|昨天|上個月|本月|日期|20\d{2}|\d{1,2}月\d{1,2}',text):
@@ -103,6 +112,31 @@ class Runtime:
         result=task.request(user)
         if task.pending:result['plan_id']=task.pending['id'];result['items']=task.pending['items']
         return result
+    def local_search(self,text,continuation=False):
+        from vision_search import is_visual_search
+        try:
+            visual=False
+            if not continuation:
+                q=parse_query(text)
+                explicit=bool(re.search(r'檔名|檔案名稱|名稱包含|\.[A-Za-z0-9]{2,5}\b',text))
+                visual=not explicit and (is_visual_search(text) or bool(q['keyword'] and q['extensions'] and q['extensions']&LOCAL_IMAGES))
+                if visual and not self.local_vision:return {'status':'clarify','mode':'task','text':'目前模型不支援圖片內容搜尋，可使用檔名條件。','preserve_pending':True}
+            # Search cannot execute or modify files. Invalidate any old workspace confirmation.
+            task=self.assistant.task
+            if task.pending:task.cancel(task.pending['id'])
+            return self.local_files.search(text,visual,self.local_vision.classify if self.local_vision else None,continuation)
+        except (ValueError,PermissionError) as exc:return {'status':'clarify','mode':'task','text':str(exc),'preserve_pending':True}
+    def set_local_scope(self,mode):
+        result=self.local_files.set_scope(mode)
+        if self.local_vision:
+            from vision_search import VisionSearch
+            self.local_vision=VisionSearch(persistent=False)
+        return result
+    def local_continue(self):
+        if not self.ready:raise RuntimeError('本機模型尚未就緒。')
+        if not self.op_lock.acquire(blocking=False):raise RuntimeError('BUSY')
+        try:return self.local_search('',True)
+        finally:self.op_lock.release()
     @staticmethod
     def spoken(result):
         if result['mode']=='chat':return result['text']
@@ -176,6 +210,6 @@ class Runtime:
             if active:result['audio']=self.voice.synthesize(self.spoken(result))
             return result
     def stop(self):
-        self.call_end();self.voice.close()
+        self.call_end();self.voice.close();self.local_files.close()
         if getattr(self,'semantic_assets',None):self.semantic_assets.close()
         self.services.stop()

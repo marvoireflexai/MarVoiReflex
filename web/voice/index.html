@@ -160,6 +160,18 @@ html[data-shell=native] .window{border-radius:0}
 .native-resize-ne,.native-resize-nw,.native-resize-se,.native-resize-sw{width:24px;height:24px}
 .native-resize-ne{top:0;right:0;cursor:nesw-resize}.native-resize-nw{top:0;left:0;cursor:nwse-resize}
 .native-resize-se{bottom:0;right:0;cursor:nwse-resize}.native-resize-sw{bottom:0;left:0;cursor:nesw-resize}
+
+.local-search-panel{display:grid;gap:10px;padding:16px;margin:0 0 20px;border:1px solid var(--line);border-radius:18px;background:var(--panel,transparent)}
+.local-search-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.local-search-top strong{font-size:14px;font-weight:650}
+#localIndexState,.local-search-panel p{font-size:12px;line-height:1.65;color:var(--muted,#777);margin:0;overflow-wrap:anywhere}
+.local-search-actions{display:flex;gap:8px;flex-wrap:wrap}
+.local-search-actions button{font-size:12px;min-height:34px;padding:6px 12px}
+.local-roots{max-height:100px;overflow:auto;white-space:pre-wrap}
+.local-result-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.local-result-actions button{font-size:12px;padding:5px 9px;min-height:28px}
+.local-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:12px}
+#localNext{margin:8px 0;align-self:flex-start}
 </style></head>
 <!-- Logo: 國立臺北大學 https://new.ntpu.edu.tw/assets/logo/ntpu.svg ; original SVG embedded without modification. -->
 <body>
@@ -183,7 +195,12 @@ html[data-shell=native] .window{border-radius:0}
      <div class="composer-wrap"><div class="composer text-composer"><button type="button" id="chatAdd" class="composer-add" aria-label="新增素材" title="新增素材"><span data-icon="plus"></span></button><textarea id="chatInput" rows="1" placeholder="傳送訊息…" aria-label="聊天內容"></textarea><div class="composer-actions"><button type="button" id="chatMic" class="composer-mic" aria-label="開啟語音通話" title="開啟語音通話"><span data-icon="mic"></span></button><div class="composer-submit"><button type="button" id="chatVoice" disabled class="composer-voice" aria-label="語音通話預覽" title="語音通話預覽"><span data-icon="voice"></span></button><button class="primary send" id="chatSend" disabled title="送出訊息" aria-label="送出訊息"><span data-icon="up"></span></button></div></div></div></div>
     </section>
     <section id="taskPage" class="page" role="region" aria-labelledby="pageTitle" hidden>
-     <div class="task-scroll"><div class="task-heading"><span data-ui-text="materialPreview">素材預覽</span><span class="badge" id="previewBadge" hidden>2 份</span><button class="icon-btn" id="assetLibrary" aria-label="開啟素材清單" title="素材清單"><span data-ui-icon="panelLeft"></span></button></div><div class="preview-card"><div class="empty" id="empty"><span class="empty-icon" data-icon="folder"></span><button class="quiet-button" id="emptyImport" data-ui-text="openAssets">開啟素材清單</button></div><div class="files" id="files" hidden></div></div><p class="task-feedback" id="taskFeedback" aria-live="polite"></p><div class="confirmation" id="confirmation" hidden><span class="confirm-note" data-i18n="confirmNote">確認才搬</span><div class="confirm-actions"><button class="ghost" id="cancel" data-i18n="cancel">取消</button><button class="primary" id="confirm"><span data-i18n="confirm">確認</span><span data-icon="arrow"></span></button></div></div></div>
+     <div class="task-scroll"><section id="localSearchPanel" class="local-search-panel" aria-label="本機檔案搜尋">
+      <div class="local-search-top"><strong id="localTitle">本機檔案搜尋</strong><span id="localIndexState" role="status">尚未啟用</span></div>
+      <p id="localScopeNote">不必匯入。搜尋目前 Windows 帳號可讀取的常見文件、圖片和媒體檔。索引留在本機，預設不修改原始檔案，排除系統、隱藏及常見敏感位置。</p>
+      <div class="local-search-actions"><button type="button" class="secondary" id="localPersonal">啟用個人檔案搜尋</button><button type="button" class="secondary" id="localDrives">擴及本機磁碟</button><button type="button" class="ghost" id="localRefresh" hidden>更新索引</button><button type="button" class="ghost" id="localRevoke" hidden>停用並清除索引</button></div>
+      <p id="localRoots" class="local-roots" hidden></p>
+     </section><div class="task-heading"><span data-ui-text="materialPreview">素材預覽</span><span class="badge" id="previewBadge" hidden>2 份</span><button class="icon-btn" id="assetLibrary" aria-label="開啟素材清單" title="素材清單"><span data-ui-icon="panelLeft"></span></button></div><div class="preview-card"><div class="empty" id="empty"><span class="empty-icon" data-icon="folder"></span><button class="quiet-button" id="emptyImport" data-ui-text="openAssets">開啟素材清單</button></div><div class="files" id="files" hidden></div></div><p class="task-feedback" id="taskFeedback" aria-live="polite"></p><button type="button" class="secondary" id="localNext" hidden>繼續搜尋下一批</button><pre id="localPreview" class="local-preview" hidden></pre><div class="confirmation" id="confirmation" hidden><span class="confirm-note" data-i18n="confirmNote">確認才搬</span><div class="confirm-actions"><button class="ghost" id="cancel" data-i18n="cancel">取消</button><button class="primary" id="confirm"><span data-i18n="confirm">確認</span><span data-icon="arrow"></span></button></div></div></div>
      <div class="composer-wrap"><div class="composer text-composer"><button type="button" id="taskAdd" class="composer-add" aria-label="新增素材" title="新增素材"><span data-icon="plus"></span></button><textarea id="taskInput" rows="1" placeholder="描述整理需求…" aria-label="任務內容"></textarea><div class="composer-actions"><button type="button" id="taskMic" class="composer-mic" aria-label="開啟語音通話" title="開啟語音通話"><span data-icon="mic"></span></button><div class="composer-submit"><button type="button" id="taskVoice" disabled class="composer-voice" aria-label="語音通話預覽" title="語音通話預覽"><span data-icon="voice"></span></button><button class="primary send" id="taskSend" disabled title="產生分類預覽" aria-label="產生分類預覽"><span data-icon="up"></span></button></div></div></div></div>
     </section>
     <section id="callPage" class="page" role="region" aria-labelledby="pageTitle" hidden>

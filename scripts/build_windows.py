@@ -8,7 +8,11 @@ os.environ.update(TEMP=str(ROOT/'build/temp'),TMP=str(ROOT/'build/temp'),PYINSTA
 subprocess.run([sys.executable,str(ROOT/'scripts/build_ui.py')],check=True)
 cmd=[sys.executable,'-m','PyInstaller','--noconfirm','--onedir','--windowed','--name','MarVoiReflex','--contents-directory','voice_runtime','--distpath',str(ROOT/'dist'),'--workpath',str(ROOT/'build/work'),'--specpath',str(ROOT/'build'),'--icon',str(ROOT/'web/voice/brand.ico'),'--paths',str(ROOT/'src'),'--collect-data','opencc','--collect-data','faster_whisper','--collect-binaries','ctranslate2','--collect-data','webview','--collect-all','clr_loader','--collect-all','pythonnet']
 import importlib.util
-if importlib.util.find_spec('moonshine_voice'):cmd+=['--collect-all','moonshine_voice']
+if os.environ.get('MARVOI_BUILD_OPTIONAL','0')=='1':
+    if importlib.util.find_spec('moonshine_voice'):cmd+=['--collect-all','moonshine_voice']
+    if importlib.util.find_spec('rapidocr_onnxruntime'):cmd+=['--collect-all','rapidocr_onnxruntime']
+else:
+    for n in ['moonshine_voice','rapidocr_onnxruntime']:cmd+=['--exclude-module',n]
 for n in ['webview.platforms.winforms','webview.platforms.edgechromium','clr','pythonnet','win32com.client','pythoncom','pywintypes','tokenizers','psutil']:cmd+=['--hidden-import',n]
 for n in ['torch','tensorflow','transformers','PySide6','tkinter','matplotlib','pandas','scipy','IPython','pyarrow','pytest','ctranslate2.converters','ctranslate2.specs','webview.platforms.qt','webview.platforms.gtk','webview.platforms.cocoa','webview.platforms.android','webview.platforms.cef']:cmd+=['--exclude-module',n]
 subprocess.run(cmd+[str(ROOT/'src/main.py')],cwd=ROOT,check=True)

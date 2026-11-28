@@ -24,7 +24,61 @@ function syncTextControls(){
   $('taskSend').setAttribute('aria-busy',String(taskBusy));
 }
 function showTaskStatus(text){const node=$('taskFeedback');node.textContent=text;node.title=text;node.scrollIntoView({block:'nearest'});}
+let localScopeState=null,localPolling=false;
+function paintLocalStatus(s){
+  localScopeState=s;
+  const active=!!s.mode;
+  $('localIndexState').textContent=!active?'尚未啟用':(s.state==='scanning'?'建立索引中':s.state==='complete'?'索引就緒':s.state==='partial'?'部分索引':'索引未完成')+' · '+s.indexed+' 個檔案';
+  $('localPersonal').hidden=s.mode==='personal'||s.mode==='drives';
+  $('localDrives').hidden=s.mode==='drives';
+  $('localRefresh').hidden=!active;$('localRevoke').hidden=!active;
+  $('localRefresh').disabled=s.state==='scanning';
+  $('localRoots').hidden=!active;
+  $('localRoots').textContent=active?'已授權範圍：\\n'+s.roots.map(r=>r.path).join('\\n'):'';
+}
+async function refreshLocalStatus(){
+  if(localPolling)return;localPolling=true;
+  try{paintLocalStatus(await api('/api/local/status',{}, {method:'GET'}));}catch(e){$('localIndexState').textContent='無法取得索引狀態';}
+  finally{localPolling=false;}
+}
+async function changeLocalScope(mode){
+  if(mode==='drives'&&!window.confirm('授權搜尋本機固定及外接磁碟中目前帳號可讀取的常見文件、圖片和媒體。排除系統與常見敏感位置；資料不會傳至雲端。此功能為唯讀。是否啟用？'))return;
+  if(mode===null&&!window.confirm('停用本機搜尋並清除本機檔案索引及結果，不會刪除原始檔案。是否繼續？'))return;
+  try{
+    paintLocalStatus(await api('/api/local/scope',{mode,consent:mode!==null}));typedSequence++;
+    $('localNext').hidden=true;$('localPreview').hidden=true;$('localPreview').textContent='';
+    if(!mode){$('files').replaceChildren();$('files').hidden=true;$('empty').hidden=false;showTaskStatus('已停用本機搜尋並清除索引。');}
+    else showTaskStatus('已授權本機檔案搜尋。索引建立時也可以搜尋已完成的部分。');
+  }catch(e){showTaskStatus(shortError(e));}
+}
+$('localPersonal').onclick=()=>changeLocalScope('personal');
+$('localDrives').onclick=()=>changeLocalScope('drives');
+$('localRevoke').onclick=()=>changeLocalScope(null);
+$('localRefresh').onclick=async()=>{try{paintLocalStatus(await api('/api/local/refresh'));typedSequence++;$('localNext').hidden=true;$('localPreview').hidden=true;showTaskStatus('正在重新建立索引。');}catch(e){showTaskStatus(shortError(e));}};
+$('localNext').onclick=async()=>{
+  if(taskBusy)return;taskBusy=true;syncTextControls();$('localNext').disabled=true;showTaskStatus('正在搜尋下一批檔案…');
+  const seq=++typedSequence;
+  try{const v=await api('/api/local/next');if(seq===typedSequence)applyTask(v.result);}catch(e){if(seq===typedSequence)showTaskStatus(shortError(e));}
+  finally{taskBusy=false;syncTextControls();$('localNext').disabled=false;}
+};
+function renderLocalResults(result){
+  const host=$('files');host.replaceChildren();
+  for(const asset of result.local_results){
+    const row=document.createElement('div');row.className='file';
+    const body=document.createElement('div');body.className='file-detail';
+    const name=document.createElement('div');name.className='filename';name.textContent=asset.name;
+    const path=document.createElement('div');path.className='path';path.style.overflowWrap='anywhere';path.textContent=asset.path;
+    const reason=document.createElement('div');reason.className='path';reason.textContent=(asset.match==='uncertain'?'需確認 · ':'')+(asset.reason||'');
+    const actions=document.createElement('div');actions.className='local-result-actions';
+    const reveal=document.createElement('button');reveal.className='secondary';reveal.textContent='顯示原始位置';reveal.onclick=async()=>{try{await api('/api/local/reveal',{id:asset.id});}catch(e){showTaskStatus(shortError(e));}};actions.append(reveal);
+    if(asset.previewable){const read=document.createElement('button');read.className='ghost';read.textContent='文字預覽';read.onclick=async()=>{try{const v=await api('/api/local/preview',{id:asset.id});$('localPreview').textContent=v.name+'\\n\\n'+v.text;$('localPreview').hidden=false;$('localPreview').scrollIntoView({block:'nearest'});}catch(e){showTaskStatus(shortError(e));}};actions.append(read);}
+    body.append(name,path,reason,actions);row.append(body);host.append(row);
+  }
+  host.hidden=!result.local_results.length;$('empty').hidden=!!result.local_results.length;
+  $('localNext').hidden=!result.local_more;
+}
 function renderSearchResults(result){
+  if(result.local_results){renderLocalResults(result);return;}
   const rows=result.visual_results?[...result.visual_results.yes.map(a=>({...a,label:'符合'})),...result.visual_results.uncertain.map(a=>({...a,label:'需確認'}))]:(result.selected||[]).map(name=>({name,label:'搜尋結果'}));
   const host=$('files');host.replaceChildren();
   for(const asset of rows){const row=document.createElement('div');row.className='file';const body=document.createElement('div');body.className='file-detail';const name=document.createElement('div');name.className='filename';name.textContent=asset.name;const detail=document.createElement('div');detail.className='path';detail.textContent=asset.label+(asset.reason?' · '+asset.reason:'');body.append(name,detail);row.append(body);host.append(row);}
@@ -137,6 +191,7 @@ function renderTaskItems(items){
   $('files').replaceChildren();for(const item of items){const row=document.createElement('div');row.className='file';row.dataset.source=item.source;row.dataset.destination=item.destination;const sign=document.createElement('span');sign.className='file-icon';sign.innerHTML=icon(/\.(png|jpe?g|webp)$/i.test(item.name)?'image':'files');const detail=document.createElement('div');detail.className='file-detail';const name=document.createElement('div');name.className='filename';name.textContent=item.name;const path=document.createElement('div');path.className='path';path.textContent=item.source.substring(0,item.source.lastIndexOf('/')+1)+' → '+item.destination.substring(0,item.destination.lastIndexOf('/')+1);const full=document.createElement('div');full.className='path full-path';full.hidden=true;full.textContent=item.source+'\n→ '+item.destination;const toggle=document.createElement('button');toggle.className='icon-btn path-details';toggle.title='完整路徑';toggle.setAttribute('aria-label','完整路徑');toggle.innerHTML='<svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>';toggle.onclick=()=>{full.hidden=!full.hidden;};detail.append(name,path,full);row.append(sign,detail,toggle);$('files').append(row);}
 }
 function applyTask(result){
+  $('localNext').hidden=true;$('localPreview').hidden=true;$('localPreview').textContent='';
   if(result.preserve_pending){$('taskFeedback').textContent=result.text;return;}
   livePlan=result.status==='preview'?result.plan_id:null;pending=!!livePlan;const items=result.items||[];renderTaskItems(items);$('files').hidden=!items.length;$('empty').hidden=!!items.length;$('previewBadge').hidden=!pending;$('previewBadge').textContent=items.length+(language==='zh'?' 份':' files');$('confirmation').hidden=!pending;$('taskFeedback').textContent=result.status==='preview'?'':result.text;
   if(result.status!=='preview')$('taskFeedback').title=result.text;
@@ -215,4 +270,4 @@ async function initialize(){
   }
   throw new Error('啟動逾時，請重新開啟 App。');
 }
-updateCallUI();syncTextControls();initialize().catch(e=>{loadingText='啟動未完成：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;showTaskStatus(loadingText);});
+updateCallUI();syncTextControls();refreshLocalStatus();setInterval(()=>{if(!localScopeState||localScopeState.state==='scanning')refreshLocalStatus();},1500);initialize().catch(e=>{loadingText='啟動未完成：'+shortError(e);$('compact').querySelector('.state span:last-child').textContent=loadingText;showTaskStatus(loadingText);});

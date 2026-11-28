@@ -158,3 +158,15 @@ html[data-shell=native] .window{border-radius:0}
 .native-resize-ne,.native-resize-nw,.native-resize-se,.native-resize-sw{width:24px;height:24px}
 .native-resize-ne{top:0;right:0;cursor:nesw-resize}.native-resize-nw{top:0;left:0;cursor:nwse-resize}
 .native-resize-se{bottom:0;right:0;cursor:nwse-resize}.native-resize-sw{bottom:0;left:0;cursor:nesw-resize}
+
+.local-search-panel{display:grid;gap:10px;padding:16px;margin:0 0 20px;border:1px solid var(--line);border-radius:18px;background:var(--panel,transparent)}
+.local-search-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.local-search-top strong{font-size:14px;font-weight:650}
+#localIndexState,.local-search-panel p{font-size:12px;line-height:1.65;color:var(--muted,#777);margin:0;overflow-wrap:anywhere}
+.local-search-actions{display:flex;gap:8px;flex-wrap:wrap}
+.local-search-actions button{font-size:12px;min-height:34px;padding:6px 12px}
+.local-roots{max-height:100px;overflow:auto;white-space:pre-wrap}
+.local-result-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.local-result-actions button{font-size:12px;padding:5px 9px;min-height:28px}
+.local-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:12px}
+#localNext{margin:8px 0;align-self:flex-start}

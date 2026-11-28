@@ -1,0 +1,51 @@
+{
+  "local_search_source": {
+    "passed": [
+      "no_scan_before_consent_and_authenticated_scope",
+      "one_click_consent_and_index_ready",
+      "original_file_search_and_read_without_import",
+      "date_and_folder_filter",
+      "pagination_without_import",
+      "actual_vision_search_on_original_file",
+      "sensitive_scope_and_mutation_excluded",
+      "opaque_id_and_stale_file_rejected",
+      "revoke_clears_index_and_keeps_originals"
+    ],
+    "isolated_fixtures": true,
+    "actual_user_files_scanned": false,
+    "page_errors": []
+  },
+  "packaged_regression": {
+    "mode": "frozen",
+    "data_isolated": true,
+    "passed": [
+      "direct_task_tab",
+      "backend_and_ui_ready",
+      "frozen_consent_ui_and_no_automatic_scan",
+      "import_images",
+      "enter_submit_and_real_visual_search",
+      "busy_response_keeps_text",
+      "click_retry_and_list",
+      "ime_no_accidental_submission",
+      "preview_exact_files",
+      "confirmed_move_integrity"
+    ],
+    "exe_sha256": "c82409dda8b3e04aa02f9a9d3e897f524dfe7ff077ccb4f034c34801d20cc74a",
+    "page_errors": []
+  },
+  "installer": {
+    "base_v0_2_0_update_pass": true,
+    "prior_v0_2_1_update_pass": true,
+    "repeat_update_pass": true,
+    "data_preserved": true,
+    "no_automatic_consent": true,
+    "patched_files_verified": 4
+  },
+  "limitations": [
+    "Isolated fixture roots, not an actual full-disk scan",
+    "32GB Windows desktop; 8GB and other hardware not verified",
+    "Packaged regression did not activate personal or disk scope; source integration did",
+    "External files are read-only; text preview TXT MD CSV, image understanding supported JPEG PNG WebP; other formats metadata only",
+    "Bounded directory enumeration, not Windows Search, MFT, USN or FTS5"
+  ]
+}
