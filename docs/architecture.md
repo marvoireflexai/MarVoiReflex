@@ -9,7 +9,7 @@ faster-whisper small INT8 CPU]
     U --> B[2 意圖理解
 聊天／任務分流]
     A --> B
-    B -->|聊天| CHAT[MiniCPM5-2B 回答
+    B -->|聊天| CHAT[Gemma 4 E2B Vision 回答
 沒有檔案工具]
     B -->|任務| C[3 任務規劃
 小模型 JSON + 條件檢查]
@@ -32,7 +32,7 @@ MCP 白名單 + 固定搬移器]
 |---|---|---|
 | 語音辨識 | src/voice_engine.py、web/voice/audio-worklet.js | 收音、短句辨識、繁體轉換；採短句辨識 |
 | 意圖理解 | src/runtime.py、assistant_modes.py、semantics.py | 聊天不執行；任務保留類型、日期、活動及否定條件 |
-| 任務規劃 | src/intent.py、flow.py | MiniCPM5-2B 產生結構化 JSON，由控制器驗證操作條件 |
+| 任務規劃 | src/intent.py、flow.py | Gemma 4 E2B Vision 產生結構化 JSON，由控制器驗證操作條件 |
 | 工具執行 | src/backend.py、flow.py、atomic_move.py、runtime/bridge.mjs | 本機 MCP stdio，固定 Windows 搬移 helper |
 | 安全確認 | src/flow.py、atomic_move.py、main.py | 授權路徑、禁止連結越界、預覽計畫、按鍵確認、再驗證來源與同名檔 |
 | 結果回報 | src/runtime.py、voice_engine.py、web/voice/live.js | 成功／失敗、分類摘要、語音、分段延遲及操作紀錄 |
@@ -64,7 +64,7 @@ flowchart TD
 
 ## 工具到底怎麼接
 
-`MiniCPM5-2B → 受限 JSON → Python 安全控制器 → 本機 HTTP bridge → MCP stdio → Desktop Commander`。
+`Gemma 4 E2B Vision → 受限 JSON → Python 安全控制器 → 本機 HTTP bridge → MCP stdio → Desktop Commander`。
 
 目前使用 `@wonderwhy-er/desktop-commander@0.3.1` 的本機 stdio 連線。只開放 list_directory、read_file、get_file_info、start_search、get_more_search_results、stop_search、start_process、read_process_output。`start_process` 僅接受控制器產生的固定搬移命令。
 
@@ -73,3 +73,7 @@ flowchart TD
 ## 資料與執行限制
 
 模型 llama.cpp：CPU、4 執行緒、4096 context、單一並行、GPU layers 0。語音 faster-whisper small INT8 CPU，Windows SAPI 回覆。工作區、錄音、聊天及操作紀錄只留在使用者本機資料目錄，不放 GitHub。應用服務綁 127.0.0.1，前端／bridge 使用每次啟動產生的憑證；服務範圍限定於本機。
+
+## 圖片內容搜尋
+
+Gemma 4 E2B 搭配視覺 projector，使用 src/vision_search.py 對工作區圖片逐張辨識，回報符合、不符合、需確認及辨識失敗；模型不接收檔名。視覺搜尋是唯讀流程，不觸發搬移。

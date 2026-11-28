@@ -33,7 +33,7 @@ class Services:
             for n in ['logs','workspace/materials','ops','home','sessions']:(self.root/n).mkdir(parents=True,exist_ok=True)
             material=self.root/'workspace'/'materials'
             if material.is_symlink() or material.is_junction():raise RuntimeError('素材工作區不可是連結')
-            status('正在檢查本機模型…');gemma=os.environ.get('MARVOI_MODEL_PROFILE')=='gemma4-e2b-vision';projector=None;expected=MODEL_SHA
+            status('正在檢查本機模型…');gemma=os.environ.get('MARVOI_MODEL_PROFILE','gemma4-e2b-vision')=='gemma4-e2b-vision';projector=None;expected=MODEL_SHA
             runtime=self.assets/'runtime'/'llama-server.exe'
             model=self.assets/'models'/'MiniCPM5-2B-Q4_K_M.gguf'
             if gemma:

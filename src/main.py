@@ -4,7 +4,7 @@ os.environ.update(CUDA_VISIBLE_DEVICES='-1',ROCR_VISIBLE_DEVICES='',GGML_VK_VISI
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--atomic-move');ap.add_argument('--data-dir');ap.add_argument('--no-browser',action='store_true');ap.add_argument('--port',type=int,default=0);ap.add_argument('--stop',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--atomic-move');ap.add_argument('--data-dir');ap.add_argument('--no-browser',action='store_true');ap.add_argument('--native',action='store_true');ap.add_argument('--port',type=int,default=0);ap.add_argument('--stop',action='store_true');args=ap.parse_args()
     if args.data_dir:os.environ['CROSSGEN_DATA_DIR']=str(Path(args.data_dir).resolve())
     from app_paths import data_root,bundle_root,web_root
     if args.atomic_move:
@@ -27,7 +27,13 @@ def main():
         if args.no_browser:raise RuntimeError('此資料夾的助理已經啟動。')
         state=json.loads((root/'connection.json').read_text(encoding='utf-8'))
         requests.get(state['origin']+'/api/status',headers={'X-MarVoi-Key':state['token']},timeout=3).raise_for_status()
-        requests.post(state['origin']+'/api/window',headers={'X-MarVoi-Key':state['token']},json={'action':'show'},timeout=5).raise_for_status();return
+        if state.get('native'):
+            requests.post(state['origin']+'/api/window',headers={'X-MarVoi-Key':state['token']},json={'action':'show'},timeout=5).raise_for_status()
+        else:
+            parsed=urllib.parse.urlsplit(state['url'])
+            if parsed.scheme!='http' or parsed.hostname!='127.0.0.1' or state['url']!=state['origin']+'/?launch='+state['token']:raise RuntimeError('Invalid local session URL.')
+            os.startfile(state['url'])
+        return
     from runtime import Runtime
     runtime=Runtime();token=secrets.token_hex(24);web=web_root();browser_job=None;close_timer=None;native_shell=None
     class Server(ThreadingHTTPServer):daemon_threads=True;allow_reuse_address=False
@@ -151,15 +157,17 @@ def main():
         if browser_job:browser_job.close();browser_job=None
         if native_shell:native_shell.destroy()
         write_json(root/'stopped.json',{'at':time.time(),'stopped':True})
-    write_json(root/'connection.json',{'origin':origin,'url':launch,'token':token,'pid':os.getpid(),'started':time.time()})
+    write_json(root/'connection.json',{'origin':origin,'url':launch,'token':token,'pid':os.getpid(),'started':time.time(),'native':bool(args.native and not args.no_browser)})
     threading.Thread(target=runtime.start,daemon=True).start();atexit.register(runtime.stop)
     server_thread=threading.Thread(target=server.serve_forever,kwargs={'poll_interval':.2},daemon=True);server_thread.start()
     try:
-        if not args.no_browser:
+        if args.native and not args.no_browser:
             from native_shell import NativeShell
             native_shell=NativeShell(launch,root,shutdown)
             native_shell.run()
-        else:server_thread.join()
+        else:
+            if not args.no_browser:os.startfile(launch)
+            server_thread.join()
     finally:
         shutdown();runtime.stop();server.server_close()
 

@@ -1,67 +1,30 @@
-# Windows App 使用指南
+# Windows 使用指南｜Gemma 4 E2B Vision
 
-## 下載
+**[下載 Windows 一鍵安裝／啟動工具](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.0-e2b-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128)
 
-[下載 Windows 自動下載工具](https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031/MarVoiReflex-Download-Windows.cmd) ／ [發行頁面](https://github.com/yo20ywork-max/MarVoiReflex/releases/tag/v0.1.0-preview-20261031)
+此版本預設使用 Gemma 4 E2B IT QAT Q4_0 及視覺 projector。首次需下載 App、3.35 GB 語言權重和 0.99 GB 視覺權重，合計約 5.04 GB。模型由 Google 官方來源下載，校驗 SHA-256 後放置到正確位置。無需 GitHub 帳號、API Key、獨顯、另外安裝 Python 或 Node.js。
 
-雙擊 `MarVoiReflex-Download-Windows.cmd`，工具會從本專案 GitHub Release 下載 App ZIP（約 693MB）與模型（約 1.56GB），核對 SHA-256 並解壓縮。完成後開啟使用者的 `Downloads\MarVoiReflex-20261031\MarVoiReflex\MarVoiReflex.exe`。
+1. 下載並雙擊 MarVoiReflex-Download-Windows.cmd。
+2. 下載完成會自動開啟本機瀏覽器介面。再次雙擊工具可啟動現有安裝。
+3. 進入任務模式，按新增素材匯入 PNG／JPEG／WebP 或 TXT／MD。
+4. 輸入「找出有汽車的照片」或「找出紅色背景的素材」來搜尋圖片內容，無須依靠檔名。
+5. 要依檔案類型整理時，輸入「整理全部圖片，先給我預覽」，核對計畫並按確認。
 
-這是免安裝 App。完整下載包含 MiniCPM5-2B Q4_K_M、CPU 推論工具、語音辨識模型及相關執行元件。下載工具原始碼見 [download_app.cmd](../scripts/download_app.cmd)。
+## 環境與限制
+
+- Windows 10/11 x64，建議至少預留 12 GB 磁碟空間。CPU 模式、4 執行緒，4096 context。
+- 本機 UI 使用 Chrome／Edge 等現代瀏覽器；避免原生 WebView2 白畫面。原生視窗為選用的 --native 模式。
+- 語音辨識使用 faster-whisper small INT8；朗讀須有 Windows 中文 SAPI 語音。
+- 圖片內容搜尋單次最多 40 張；不支援指定路徑或複合日期條件。辨識結果不會自動搬移檔案。
+- 32GB 桌機驗證不等同 8GB、網咖、其他硬體的相容性驗收。受管理電腦須遵守管理員的執行及網路政策。
+
+App 安裝在使用者的 LocalAppData 下 MarVoiReflex/20261128-E2B，資料在各安裝目錄的 Data-MarVoiVoice；舊安裝不會被覆寫。若網路受限，請檢查安裝日誌並聯絡管理員。不要公開 connection.json（含本機連線權杖）。
 
 ## 手動下載
 
-也可下載以下兩個檔案：
+1. 從 [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128) 下載 MarVoiReflex-Gemma4-E2B-Windows-x64.zip 並完整解壓。
+2. 從 [Google 官方 Gemma 4 E2B QAT GGUF](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf) 下載 gemma-4-E2B_q4_0-it.gguf 及 gemma-4-E2B-it-mmproj.gguf。
+3. 將兩個檔案放入 MarVoiReflex/assets/gemma4-e2b，保留 runtime 子資料夾及其他所有檔案。
+4. 雙擊 MarVoiReflex.exe。
 
-1. [App 本體 ZIP](https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031/MarVoiReflex-App-CPU-Windows-x64-20261031.zip)。
-2. [MiniCPM5-2B-Q4_K_M.gguf 模型](https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031/MiniCPM5-2B-Q4_K_M.gguf)。
-
-完整 App 超過 GitHub 單檔上限，因此分開提供。兩個檔案都可公開下載，無需 GitHub 帳號。
-
-## 電腦準備
-
-- Windows 10/11，64 位元 x64。
-- 至少 6GB 可用磁碟空間，供下載、解壓縮及操作資料使用。
-- [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) 與 .NET Framework 4.8。
-- 使用語音對話時，需有可用的麥克風與 Windows 中文朗讀語音；建議配戴耳機。
-
-App 以 CPU 執行，不需獨立顯示卡，也不需另外安裝 Python、Node 或 CUDA。8GB 記憶體是設計目標；現有驗證主機約 32GB，8GB 實機與其他電腦的相容性測試尚未完成。
-
-## 第一次開啟
-
-使用自動下載工具時，已完成解壓縮與模型放置。手動下載時，依序操作：
-
-1. 在 App ZIP 上按右鍵，選「全部解壓縮」，放到自己的可寫入位置，例如桌面或文件資料夾。
-2. 在解壓縮後的 `MarVoiReflex\assets` 裡建立 `models` 資料夾，將模型放入，完整相對路徑為 `MarVoiReflex\assets\models\MiniCPM5-2B-Q4_K_M.gguf`。
-3. 開啟 `MarVoiReflex` 資料夾，雙擊 `MarVoiReflex.exe`。
-4. 等待本機模型與工具啟動，再開始輸入訊息。
-
-請保留 `assets`、`voice_runtime`、`web`、`第三方授權` 等資料夾與 App 放在一起。啟動說明也收錄在包內的 `MarVoiReflex-使用說明.txt`。
-
-## 試做一次素材整理
-
-1. 點左側資料夾圖示，開啟任務畫面。
-2. 按「示範」建立測試素材；也可按「匯入」複製自己的圖片、TXT 或 Markdown 文案到 App 工作區。
-3. 輸入「整理本週圖片與文案，先預覽」。
-4. 檢查檔案名稱與分類去向，按畫面的「確認」後才會搬移；按「取消」則保留原位。
-5. 查看結果摘要。App 會逐檔核對搬移後的 SHA-256。
-
-素材操作範圍限於 App 的工作區。聊天與任務分開；語音說「確認」仍需在畫面按確認，才會執行檔案搬移。
-
-## 語音對話
-
-點電話或輸入框旁的聲波按鈕進入通話，選擇聊天或交辦任務，再開始並允許麥克風。語音回覆使用 Windows 中文朗讀語音，回覆速度可在語音選單查看。此功能為 AI 語音對話。
-
-## 資料儲存
-
-App 會在程式旁建立 `Data-MarVoiVoice`，存放匯入素材、操作紀錄及視窗設定。公開下載包不含開發電腦上的素材、聊天紀錄或連線權杖。關閉 App 會停止本 App 啟動的模型與工具服務。
-
-## 下載檔案校驗
-
-發行頁面的 `SHA256SUMS.txt` 提供 App ZIP、模型及下載工具的校驗碼。可在 PowerShell 執行下列指令，與清單比對：
-
-```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath '.\MarVoiReflex-App-CPU-Windows-x64-20261031.zip'
-Get-FileHash -Algorithm SHA256 -LiteralPath '.\MiniCPM5-2B-Q4_K_M.gguf'
-```
-
-版本、已完成驗證及測試限制見[發行紀錄](releases/2026-10-31.md)。
+完整校驗碼、版本限制與驗證結果見[本次發行紀錄](releases/2026-11-28.md)。舊版 MiniCPM5-2B 僅作為[歷史版本](releases/2026-10-31.md)保留。

@@ -3,10 +3,12 @@
   "runtime_assets_committed": false,
   "CPU_only": true,
   "model": {
-    "filename": "MiniCPM5-2B-Q4_K_M.gguf",
-    "bytes": 1561318368,
-    "sha256": "ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd",
-    "upstream": "https://huggingface.co/openbmb/MiniCPM5-2B"
+    "filename": "gemma-4-E2B_q4_0-it.gguf",
+    "bytes": 3349516256,
+    "sha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+    "upstream": "https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf",
+    "profile": "gemma4-e2b-vision",
+    "default": true
   },
   "asr": {
     "repository": "https://huggingface.co/Systran/faster-whisper-small",
@@ -37,7 +39,8 @@
     "gpu_layers": 0,
     "device": "none",
     "context_tokens": 4096,
-    "threads": 4
+    "threads": 4,
+    "version": "b12823"
   },
   "python_versions_recorded": {
     "faster-whisper": "1.2.1",
@@ -88,5 +91,17 @@
     "pyinstaller": "6.22.2"
   },
   "tts": "Installed Windows SAPI Chinese voice; not redistributed",
-  "note": "Exact llama.cpp binary version and full transitive asset inventory stay with the original release; a clean-room dependency reinstall has not been verified."
+  "note": "Previous runtime dependency versions are historical records. Gemma E2B release uses b12823 Windows CPU x64; see 2026-11-28 release notes for validation and limits.",
+  "legacy_model": {
+    "filename": "MiniCPM5-2B-Q4_K_M.gguf",
+    "bytes": 1561318368,
+    "sha256": "ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd",
+    "upstream": "https://huggingface.co/openbmb/MiniCPM5-2B"
+  },
+  "vision_projector": {
+    "filename": "gemma-4-E2B-it-mmproj.gguf",
+    "bytes": 986833664,
+    "sha256": "021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14",
+    "gpu_offload": false
+  }
 }

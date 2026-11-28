@@ -10,35 +10,28 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 
 開發目標為 **Windows、CPU、8GB 記憶體、無獨顯**。目前已於 31.76GiB 記憶體主機完成 CPU 模式的特定技術檢查，8GB 實機驗證列於後續測試規劃。
 
-## E2B 圖片搜尋實驗
+## 下載與啟動｜Gemma 4 E2B Vision
 
-此分支加入 Gemma 4 E2B 圖片內容搜尋原始碼，尚未重新打包 Windows EXE。詳見 [實驗說明](docs/vision-preview.md)。
+**[下載 Windows 一鍵安裝／啟動工具（CMD）](https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.0-e2b-20261128/MarVoiReflex-Download-Windows.cmd)** ／ [新版發行頁面](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/v0.2.0-e2b-20261128)
 
-## 下載與啟動
+目前預設模型為 **Gemma 4 E2B IT QAT Q4_0 + 視覺 projector**。不需要 API Key 或獨顯。首次下載約 5.04 GB，請預留至少 12 GB 磁碟空間。
 
-**[下載 Windows 自動下載工具（CMD）](https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031/MarVoiReflex-Download-Windows.cmd)** ／ [發行頁面與手動下載](https://github.com/yo20ywork-max/MarVoiReflex/releases/tag/v0.1.0-preview-20261031)
+1. 下載並雙擊 CMD，工具自動下載與校驗 App、Google 官方模型及視覺權重。
+2. 下載完成自動開啟本機瀏覽器介面，不再預設依賴 WebView2。
+3. 在任務模式匯入圖片，輸入「找出有汽車的照片」或「找出紅色背景的素材」。即使檔名無關，也能依圖片內容辨識。
+4. 使用「整理全部圖片，先給我預覽」進行分類，畫面確認後才搬移。
 
-1. 下載並雙擊 `MarVoiReflex-Download-Windows.cmd`。工具會下載 App 與模型、核對校驗碼並解壓縮，合計下載約 2.25GB。
-2. 到使用者的 `Downloads\MarVoiReflex-20261031\MarVoiReflex` 資料夾，雙擊 `MarVoiReflex.exe`。
-3. 進入任務畫面，按「示範」建立素材，再輸入「整理本週圖片與文案，先預覽」。檢查清單後，按畫面的「確認」執行。
-
-這是免安裝版。下載工具會把本機模型與執行元件放到正確位置，不需另外安裝 Python、Node 或 CUDA。請保留程式旁的所有資料夾，並預留至少 6GB 磁碟空間。執行環境為 Windows 10/11 x64，需有 Microsoft Edge WebView2 Runtime 與 .NET Framework 4.8；語音回覆需 Windows 中文朗讀語音。環境準備與手動下載步驟見[使用指南](docs/user-guide.md)。
-
-完整 App 超過 GitHub 單檔上限，因此分成約 693MB 的 App ZIP 與約 1.56GB 的模型檔。兩份檔案都提供公開下載，無需 GitHub 帳號。GitHub 自動產生的 **Source code** 是開發用原始碼。此版使用 CPU，8GB 實機與跨電腦相容性驗證仍待完成。
-
-### 白畫面／網咖相容模式（2026-11-28）
-
-若 EXE 能開啟但視窗全白，可先關閉原 App，從 [瀏覽器相容工具](scripts/MarVoiReflex-Browser-Mode.cmd) 頁面按 Download raw file，將 CMD 存到 `MarVoiReflex.exe` 同一資料夾後雙擊。此工具使用既有發行版的本機服務與預設瀏覽器，不必重新下載模型，也不需要變更 Windows 安全性設定；尚未完成網咖實機驗證。若管理政策禁止執行，請聯絡管理員。不要公開 `Data-MarVoiVoice/connection.json`（含本機連線權杖）。
+支援 Windows x64 純 CPU。32GB 桌機測試與 8GB／跨電腦相容性限制見[發行紀錄](docs/releases/2026-11-28.md)。操作方式見[使用指南](docs/user-guide.md)。舊 MiniCPM5-2B 下載僅保留在[歷史版本](docs/releases/2026-10-31.md)。
 
 ## 操作展示
 
 [![素材分類預覽，點擊開啟影片](docs/images/demo-material-preview.png)](docs/demo/MarVoiReflex-Material-Task-20261031.mp4)
 
-[觀看 MP4](docs/demo/MarVoiReflex-Material-Task-20261031.mp4)／[GitHub 影片下載](https://github.com/yo20ywork-max/MarVoiReflex/releases/tag/demo-20261031)／[操作紀錄](docs/demo.md)
+[觀看 MP4](docs/demo/MarVoiReflex-Material-Task-20261031.mp4)／[GitHub 影片下載](https://github.com/marvoireflexai/MarVoiReflex/releases/tag/demo-20261031)／[操作紀錄](docs/demo.md)
 
 2026-10-31 實際操作 Windows App，輸入「整理本週的圖片與文案，先給我預覽。」系統列出兩份素材，經畫面確認後完成分類並逐檔驗證；上週文案與 CSV 保持原位。影片長約 3 分 42 秒，無聲、原速，保留操作與等待過程。
 
-展示採合成素材、中文文字輸入與 MiniCPM5-2B CPU 模式。8GB 實機與語音操作的測試狀態見[技術驗證紀錄](docs/testing/feasibility.md)。
+2026-10-31 歷史展示採合成素材、中文文字輸入與 MiniCPM5-2B CPU 模式；目前新版預設 Gemma 4 E2B Vision。8GB 實機與語音操作的測試狀態見[技術驗證紀錄](docs/testing/feasibility.md)。
 
 ## 功能狀態
 
@@ -46,6 +39,7 @@ MarVoiReflex 協助小型商家的社群行銷人員，以中文語音或文字�
 |---|---|
 | 聊天與任務分流 | 已實作；聊天模式獨立於檔案操作 |
 | 素材匯入、清單與搜尋 | 已實作；操作範圍限定授權工作區 |
+| 圖片內容搜尋（Gemma 4 E2B） | 已實作；依圖片內容辨識，單次最多 40 張，不依檔名 |
 | 活動名稱、圖片／文案與日期篩選 | 已實作基本流程；日期依檔名判定 |
 | 分類預覽、畫面確認、搬移與驗證 | 已實作；分類至圖片／文案資料夾 |
 | 取消、同名檔及越界處理 | 已實作基本控制；完整案例驗證待完成 |
@@ -108,4 +102,4 @@ docs/      研究規格、系統設計、測試方法與驗證紀錄
 
 原始程式授權條款見 [LICENSE](LICENSE)，第三方來源與授權見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-前期開發紀錄：[GhostReflex_System](https://github.com/yo20ywork-max/GhostReflex_System)。目前版本資訊見[發行紀錄](docs/releases/2026-10-31.md)。
+前期開發紀錄：[GhostReflex_System](https://github.com/yo20ywork-max/GhostReflex_System)。目前版本資訊見[發行紀錄](docs/releases/2026-11-28.md)。

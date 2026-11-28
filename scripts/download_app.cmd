@@ -1,107 +1,126 @@
 @echo off
 setlocal
 chcp 65001 >nul
-set "MARVOI_DOWNLOADER=%~f0"
-powershell.exe -NoLogo -NoProfile -Command "$ErrorActionPreference='Stop'; $text=Get-Content -LiteralPath $env:MARVOI_DOWNLOADER -Raw -Encoding UTF8; $marker='# MARVOI_POWERSHELL'; & ([scriptblock]::Create($text.Substring($text.LastIndexOf($marker))))"
-if errorlevel 1 (
-  echo.
-  echo 下載未完成，請查看上方訊息。也可使用 GitHub 發行頁的手動下載方式。
-  pause
-  exit /b 1
-)
+set "MVR_INSTALLER=%~f0"
+powershell.exe -NoLogo -NoProfile -Command "$ErrorActionPreference='Stop'; $s=Get-Content -LiteralPath $env:MVR_INSTALLER -Raw -Encoding UTF8; $m='# MVR_E2B_PS'; & ([scriptblock]::Create($s.Substring($s.LastIndexOf($m))))"
+set "RC=%ERRORLEVEL%"
+echo.
 pause
-exit /b 0
-# MARVOI_POWERSHELL
+exit /b %RC%
+# MVR_E2B_PS
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-[void][Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem')
-$baseUrl = 'https://github.com/yo20ywork-max/MarVoiReflex/releases/download/v0.1.0-preview-20261031'
-$archiveName = 'MarVoiReflex-App-CPU-Windows-x64-20261031.zip'
-$archiveHash = '754673e81d6d8a50198a4bed45618b82992328bd7f9b1ec319ee42faf1f5bc58'
-$modelName = 'MiniCPM5-2B-Q4_K_M.gguf'
-$modelHash = 'ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd'
-$exeHash = '6d6c2d79890254f402e12792fda957f5f43924201b18e8ce48a3def8ee0d1faf'
-$destination = $env:MARVOI_INSTALL_DIR
-if ([string]::IsNullOrWhiteSpace($destination)) {
-    $destination = Join-Path $env:USERPROFILE 'Downloads\MarVoiReflex-20261031'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$root = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'MarVoiReflex\20261128-E2B'
+$cache = Join-Path $root 'downloads'
+$stamp = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,6)
+$stage = Join-Path $root ('stage-' + $stamp)
+$final = Join-Path $root ('MarVoiReflex-' + $stamp)
+$zipName = 'MarVoiReflex-Gemma4-E2B-Windows-x64.zip'
+$zipSha = '43e06d091651cecfb164b246a86df92dd980bf1964d4b34096d8627021c1dfc4'
+$zipBytes = 708360885L
+$exeSha = 'b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f'
+$base = 'https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.0-e2b-20261128/'
+$hf = 'https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/'
+$model = 'gemma-4-E2B_q4_0-it.gguf'
+$modelSha = 'fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634'
+$projector = 'gemma-4-E2B-it-mmproj.gguf'
+$projectorSha = '021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14'
+$success = $false
+$transcript = $false
+function Test-Asset([string]$Path,[string]$Sha,[long]$Bytes=-1) {
+    if(-not [IO.File]::Exists($Path)){return $false}
+    $length=(Get-Item -LiteralPath $Path).Length
+    if($length -le 0 -or ($Bytes -ge 0 -and $length -ne $Bytes)){return $false}
+    return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ieq $Sha)
 }
-$destination = [IO.Path]::GetFullPath($destination)
-$appRoot = Join-Path $destination 'MarVoiReflex'
-$exe = Join-Path $appRoot 'MarVoiReflex.exe'
-$modelTarget = Join-Path $appRoot ('assets\models\' + $modelName)
-
-function Test-Hash([string]$Path, [string]$Expected) {
-    if (-not [IO.File]::Exists($Path)) { return $false }
-    $stream = [IO.File]::OpenRead($Path)
-    $algorithm = [Security.Cryptography.SHA256]::Create()
-    try {
-        $actual = [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '').ToLowerInvariant()
-        return $actual -eq $Expected
-    } finally {
-        $stream.Dispose()
-        $algorithm.Dispose()
-    }
-}
-
-function Receive-Asset([string]$Name, [string]$Expected) {
-    $cached = Join-Path $cache $Name
-    if (Test-Path -LiteralPath $cached) {
-        if (Test-Hash $cached $Expected) {
-            Write-Host ('已核對：' + $Name)
-            return $cached
-        }
-        throw ('下載資料夾內已有不同內容的檔案，請先移至其他位置：' + $cached)
-    }
-    $partial = $cached + '.partial'
-    for ($attempt = 1; $attempt -le 3; $attempt++) {
-        try {
-            Write-Host ('下載中（' + $attempt + '/3）：' + $Name)
-            $client = [Net.WebClient]::new()
-            try {
-                $client.Headers['User-Agent'] = 'MarVoiReflex-Downloader/0.1.0'
-                $client.DownloadFile(($baseUrl + '/' + $Name), $partial)
-            } finally {
-                $client.Dispose()
+function Fetch([string]$Url,[string]$Name,[string]$Sha,[long]$Bytes) {
+    $target=Join-Path $cache $Name
+    if(Test-Asset $target $Sha $Bytes){Write-Host ('已校驗快取：'+$Name);return $target}
+    if(Test-Path -LiteralPath $target){Move-Item -LiteralPath $target -Destination ($target+'.invalid-'+$stamp)}
+    $part=$target+'.partial'
+    for($i=1;$i -le 3;$i++){
+        try{
+            if(Test-Path -LiteralPath $part){
+                if(Test-Asset $part $Sha $Bytes){Move-Item -LiteralPath $part -Destination $target;return $target}
+                if((Get-Item -LiteralPath $part).Length -ge $Bytes){Remove-Item -LiteralPath $part -Force}
             }
-            if (-not (Test-Hash $partial $Expected)) {
-                throw ('檔案校驗失敗：' + $Name)
+            Write-Host ('下載 '+$Name+' ('+$i+'/3)')
+            $curl=Get-Command curl.exe -ErrorAction SilentlyContinue
+            if($curl){
+                $previous=$ErrorActionPreference
+                try{$ErrorActionPreference='Continue'; & $curl.Source '--fail' '--location' '--retry' '2' '--connect-timeout' '30' '--continue-at' '-' '--output' $part $Url; $rc=$LASTEXITCODE}finally{$ErrorActionPreference=$previous}
+                if($rc -ne 0){if($rc -eq 33 -or $rc -eq 36){if(Test-Path -LiteralPath $part){Remove-Item -LiteralPath $part -Force}};throw ('下載錯誤碼：'+$rc)}
+            }else{
+                $client=New-Object Net.WebClient
+                try{$client.Headers['User-Agent']='MarVoiReflex-E2B/0.2.0';$client.DownloadFile($Url,$part)}finally{$client.Dispose()}
             }
-            [IO.File]::Move($partial, $cached)
-            return $cached
-        } catch {
-            if ($attempt -eq 3) { throw }
-            Write-Host '下載中斷，正在重試。'
+            if(-not(Test-Asset $part $Sha $Bytes)){throw '下載大小或 SHA-256 不符'}
+            Move-Item -LiteralPath $part -Destination $target
+            Write-Host ('下載完整性通過：'+$Name)
+            return $target
+        }catch{
+            Write-Host $_.Exception.Message -ForegroundColor Yellow
+            if($i -eq 3){throw}
+            Start-Sleep -Seconds 2
         }
     }
 }
-
-try {
-    if (Test-Path -LiteralPath $appRoot) {
-        if ((Test-Hash $exe $exeHash) -and (Test-Hash $modelTarget $modelHash)) {
-            Write-Host ('App 已存在，可直接開啟：' + $exe)
-            exit 0
+try{
+    [void][IO.Directory]::CreateDirectory($root)
+    $log=Join-Path $root ('install-'+$stamp+'.log')
+    try{Start-Transcript -LiteralPath $log -Force | Out-Null;$transcript=$true}catch{}
+    Write-Host 'MarVoiReflex | Gemma 4 E2B Vision | Windows x64'
+    $arch=$env:PROCESSOR_ARCHITECTURE
+    if($env:PROCESSOR_ARCHITEW6432){$arch=$env:PROCESSOR_ARCHITEW6432}
+    if($arch -ne 'AMD64'){throw '此版本僅支援 Windows Intel / AMD x64。'}
+    $pointer=Join-Path $root 'current.txt'
+    if(Test-Path -LiteralPath $pointer){
+        $old=Get-Content -LiteralPath $pointer -Raw -Encoding UTF8
+        $old=$old.Trim()
+        if($old -match '^MarVoiReflex-\d{8}-\d{6}-[0-9a-f]{6}$'){
+            $existing=Join-Path $root $old
+            $oldExe=Join-Path $existing 'MarVoiReflex.exe'
+            $g=Join-Path $existing 'assets\gemma4-e2b'
+            if((Test-Asset $oldExe $exeSha) -and (Test-Asset (Join-Path $g $model) $modelSha 3349516256L) -and (Test-Asset (Join-Path $g $projector) $projectorSha 986833664L) -and (Test-Path (Join-Path $g 'runtime\llama-server.exe')) -and (Test-Path (Join-Path $existing 'web\voice\index.html'))){
+                Write-Host '現有安裝已通過校驗。'
+                Start-Process -FilePath $oldExe -WorkingDirectory $existing
+                $success=$true
+                exit 0
+            }
         }
-        throw ('目的地已有資料夾，請保留現有資料，改用其他位置或依手動下載說明補齊檔案：' + $appRoot)
     }
-    [void][IO.Directory]::CreateDirectory($destination)
-    $cache = Join-Path $destination 'downloads'
+    $drive=New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($root))
+    if($drive.AvailableFreeSpace -lt 12GB){throw '需要至少 12GB 可用空間供下載及解壓縮。'}
     [void][IO.Directory]::CreateDirectory($cache)
-    Write-Host ('儲存位置：' + $destination)
-    $archive = Receive-Asset $archiveName $archiveHash
-    $model = Receive-Asset $modelName $modelHash
-    Write-Host '檔案校驗通過，正在解壓縮。'
-    [IO.Compression.ZipFile]::ExtractToDirectory($archive, $destination)
-    if (-not (Test-Hash $exe $exeHash)) { throw '執行檔校驗失敗，請保留訊息並回報。' }
-    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($modelTarget)) | Out-Null
-    [IO.File]::Move($model, $modelTarget)
-    if (-not (Test-Hash $modelTarget $modelHash)) { throw '模型校驗失敗，請保留訊息並回報。' }
-    Write-Host ''
-    Write-Host '下載與解壓縮完成。請開啟下列程式：'
-    Write-Host $exe
-    Write-Host 'App 需有 WebView2 與 .NET Framework 4.8；使用語音回覆需 Windows 中文朗讀語音。'
-    exit 0
-} catch {
-    Write-Host ('未完成：' + $_.Exception.Message) -ForegroundColor Red
-    exit 1
+    $zip=Fetch ($base+$zipName) $zipName $zipSha $zipBytes
+    $m=Fetch ($hf+$model) $model $modelSha 3349516256L
+    $v=Fetch ($hf+$projector) $projector $projectorSha 986833664L
+    [void][IO.Directory]::CreateDirectory($stage)
+    Write-Host '解壓縮 App 並放置 Gemma 4 E2B 權重。'
+    [IO.Compression.ZipFile]::ExtractToDirectory($zip,$stage)
+    $app=Join-Path $stage 'MarVoiReflex'
+    $exe=Join-Path $app 'MarVoiReflex.exe'
+    if(-not(Test-Asset $exe $exeSha)){throw '執行檔遺失、空白或校驗失敗。'}
+    $g=Join-Path $app 'assets\gemma4-e2b'
+    if(-not(Test-Path -LiteralPath (Join-Path $g 'runtime\llama-server.exe') -PathType Leaf)){throw 'CPU 推論引擎遺失。'}
+    Copy-Item -LiteralPath $m -Destination (Join-Path $g $model)
+    Copy-Item -LiteralPath $v -Destination (Join-Path $g $projector)
+    if(-not(Test-Asset (Join-Path $g $model) $modelSha 3349516256L) -or -not(Test-Asset (Join-Path $g $projector) $projectorSha 986833664L)){throw '模型放置後校驗失敗。'}
+    Move-Item -LiteralPath $app -Destination $final
+    $finalExe=Join-Path $final 'MarVoiReflex.exe'
+    if(-not(Test-Asset $finalExe $exeSha)){throw '最終 EXE 校驗失敗。'}
+    [IO.File]::WriteAllText($pointer,[IO.Path]::GetFileName($final),(New-Object Text.UTF8Encoding($false)))
+    Write-Host ('安裝完成：'+$final) -ForegroundColor Green
+    Write-Host '正在啟動本機瀏覽器介面，首次模型載入請留意畫面狀態。'
+    Start-Process -FilePath $finalExe -WorkingDirectory $final
+    $success=$true
+}catch{
+    Write-Host ('安裝未完成：'+$_.Exception.Message) -ForegroundColor Red
+    Write-Host '原有資料未覆寫。若網咖管理政策阻擋，請由管理員確認。'
+}finally{
+    if($success -and (Test-Path -LiteralPath $stage)){try{Remove-Item -LiteralPath $stage -Recurse -Force}catch{}}
+    if($transcript){Write-Host ('記錄：'+$log);try{Stop-Transcript | Out-Null}catch{}}
 }
+if($success){exit 0}else{exit 1}

@@ -6,7 +6,8 @@
 |---|---|---|
 | Noto Sans TC | 中英共用字型 | ui/NotoSansTC-OFL.txt；SIL OFL 1.1 |
 | 國立臺北大學識別圖 | 專題展示識別 | https://new.ntpu.edu.tw/assets/logo/ntpu.svg；原始圖形；商標及識別權利屬校方 |
-| MiniCPM5-2B | Windows 發行包隨附 Q4_K_M 本機模型 | https://huggingface.co/openbmb/MiniCPM5-2B；保留發行包內該版本模型卡、Apache-2.0 與來源紀錄 |
+| MiniCPM5-2B（歷史版本） | Windows 發行包隨附 Q4_K_M 本機模型 | https://huggingface.co/openbmb/MiniCPM5-2B；保留發行包內該版本模型卡、Apache-2.0 與來源紀錄 |
+| Gemma 4 E2B IT QAT Q4_0 ＋視覺 projector | 新版預設；權重由下載工具從 Google 官方來源取得，未重新散布於 App ZIP | https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf；https://ai.google.dev/gemma/terms |
 | llama.cpp | Windows 發行包隨附 CPU 推論程式 | https://github.com/ggml-org/llama.cpp/blob/master/LICENSE |
 | Desktop Commander | Windows 發行包隨附本機 MCP 0.3.1 | https://github.com/wonderwhy-er/DesktopCommanderMCP；依安裝版本 LICENSE，與 remote-desktop-commander 分開記錄 |
 | faster-whisper / CTranslate2 | Windows 發行包隨附 CPU 語音辨識元件及模型 | https://github.com/SYSTRAN/faster-whisper / https://github.com/OpenNMT/CTranslate2；MIT |

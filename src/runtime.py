@@ -21,7 +21,7 @@ class Runtime:
                     return super().ask(history,feedback,c)
             self.assistant=Assistant(self.root/'sessions'/'live',date.today(),42)
             self.vision_search=None
-            if os.environ.get('MARVOI_MODEL_PROFILE')=='gemma4-e2b-vision':
+            if os.environ.get('MARVOI_MODEL_PROFILE','gemma4-e2b-vision')=='gemma4-e2b-vision':
                 from vision_search import VisionSearch
                 self.vision_search=VisionSearch()
             self.assistant.task.planner=GroundedPlanner(self.root/'sessions'/'task.requests.jsonl',42,date.today());self.ready=True
