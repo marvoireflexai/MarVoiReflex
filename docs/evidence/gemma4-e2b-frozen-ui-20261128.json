@@ -1,0 +1,17 @@
+{
+  "test_exe_sha256": "b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f",
+  "data_isolated": true,
+  "model_override": false,
+  "backend_ready": true,
+  "browser": "msedge",
+  "ui_rendered": true,
+  "chat_completed": true,
+  "ui_imported": 3,
+  "ui_visual_selected": [
+    "red_bottle.jpg"
+  ],
+  "ui_visual_errors": [],
+  "preview_count": 3,
+  "moved": 3,
+  "page_errors": []
+}
