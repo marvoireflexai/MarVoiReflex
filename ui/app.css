@@ -170,3 +170,14 @@ html[data-shell=native] .window{border-radius:0}
 .local-result-actions button{font-size:12px;padding:5px 9px;min-height:28px}
 .local-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:12px}
 #localNext{margin:8px 0;align-self:flex-start}
+
+.call-files{width:min(640px,100%);max-height:38vh;overflow:auto;display:flex;flex-direction:column;gap:8px;flex-shrink:0;margin:8px auto}
+.call-files[hidden]{display:none}
+.result-file-card{border:1px solid var(--line);border-radius:14px;padding:12px;min-height:0;flex-shrink:0}
+.result-file-card .file-detail{min-width:0;width:100%}
+#callTaskStatus{height:auto;min-height:0;max-height:110px;overflow:auto}
+.result-preview-dialog{max-width:min(880px,92vw);max-height:88vh;overflow:auto;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);padding:18px}
+.result-preview-dialog::backdrop{background:rgba(0,0,0,.45)}
+#resultPreviewImage{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}
+#resultPreviewImage[hidden],#resultPreviewText[hidden]{display:none}
+#resultPreviewText{max-width:76vw;max-height:70vh;white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere}

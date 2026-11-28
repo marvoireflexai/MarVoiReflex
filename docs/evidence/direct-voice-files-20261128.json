@@ -1,0 +1,53 @@
+{
+  "local_original_file_delivery": {
+    "passed": [
+      "no_scan_before_consent_and_authenticated_scope",
+      "one_click_consent_and_index_ready",
+      "local_text_download_exact_original_bytes",
+      "original_file_search_and_read_without_import",
+      "date_and_folder_filter",
+      "pagination_without_import",
+      "local_image_preview_download",
+      "actual_vision_search_on_original_file",
+      "sensitive_scope_and_mutation_excluded",
+      "opaque_id_and_stale_file_rejected",
+      "revoke_clears_index_and_keeps_originals"
+    ],
+    "isolated_fixtures": true,
+    "actual_user_files_scanned": false,
+    "page_errors": []
+  },
+  "packaged_voice_and_file_delivery": {
+    "mode": "frozen",
+    "passed": [
+      "task_voice_auto_search_with_audio",
+      "voice_move_only_previews",
+      "cancel_preserves_originals",
+      "explicit_chat_voice_routes_to_task",
+      "call_page_direct_preview_and_byte_identical_download",
+      "browser_fake_mic_auto_result_no_text_submit_call_stays_connected"
+    ],
+    "synthetic_audio": true,
+    "physical_microphone_tested": false,
+    "isolated": true,
+    "page_errors": []
+  },
+  "installer": {
+    "v0_3_0_short_path_update_pass": true,
+    "patched_files_verified": 4,
+    "existing_user_data_preserved": true
+  },
+  "safety_unit_checks": {
+    "low_confidence_no_task_execution": true,
+    "empty_call_id_rejected": true,
+    "local_and_workspace_open_exact_target_mocked": true,
+    "arbitrary_path_rejected": true,
+    "stale_and_revoked_result_rejected": true
+  },
+  "limitations": [
+    "32GB Windows desktop, synthetic speech and fake microphone",
+    "Native file association application opening not observed; OS call target tested with mock",
+    "Local original-file delivery integration tested in source with isolated folders, packaged call delivery tested with imported fixture files",
+    "No actual personal files scanned"
+  ]
+}

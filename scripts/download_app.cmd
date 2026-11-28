@@ -24,13 +24,14 @@ $zipSha = '43e06d091651cecfb164b246a86df92dd980bf1964d4b34096d8627021c1dfc4'
 $zipBytes = 708360885L
 $baseExeSha = 'b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f'
 $priorExeSha = '94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9'
-$exeSha = 'c82409dda8b3e04aa02f9a9d3e897f524dfe7ff077ccb4f034c34801d20cc74a'
+$localSearchExeSha = 'c82409dda8b3e04aa02f9a9d3e897f524dfe7ff077ccb4f034c34801d20cc74a'
+$exeSha = '76d20fbb62db2bc2b5751b05892fbacf75750166b8d5b289ec714e976500636d'
 $base = 'https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.2.0-e2b-20261128/'
 $hf = 'https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/'
-$patchBase = 'https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.0-local-search-20261128/'
-$patchName = 'MarVoiReflex-Local-Search-Windows-x64.zip'
-$patchSha = '1791f214ba761b1e13cab8b66a97d90f71324678ba7fada212d57f3bb25fd8bc'
-$patchBytes = 20965184L
+$patchBase = 'https://github.com/marvoireflexai/MarVoiReflex/releases/download/v0.3.1-direct-voice-20261128/'
+$patchName = 'MarVoiReflex-Direct-Voice-Files-Windows-x64.zip'
+$patchSha = '42ca1f8f49800dd9a09b28493f3c06a0b74350db21b7009cf871e303f7deb999'
+$patchBytes = 20976708L
 $model = 'gemma-4-E2B_q4_0-it.gguf'
 $modelSha = 'fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634'
 $projector = 'gemma-4-E2B-it-mmproj.gguf'
@@ -77,10 +78,10 @@ function Fetch([string]$Url,[string]$Name,[string]$Sha,[long]$Bytes) {
 }
 
 $patchFiles = @(
-    [pscustomobject]@{path='MarVoiReflex.exe';size=15295641L;sha256='c82409dda8b3e04aa02f9a9d3e897f524dfe7ff077ccb4f034c34801d20cc74a';old_sha256=@('94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9','b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f');allow_absent=$false},
-    [pscustomobject]@{path='voice_runtime/base_library.zip';size=1332808L;sha256='c591cf873f32ce28e7dc6d9f207163cf83274751a4eaa0dc48f99a3ee9229db5';old_sha256=@('73357d404c0b934b43ba4d003132bf1fde2c6da1c7f2db8648805b2b034f6582','772e5da6ba515e7dcbee7c039ffcb9fa1d8a491f7f96501772786498e98c81eb');allow_absent=$false},
-    [pscustomobject]@{path='web/voice/index.html';size=7348598L;sha256='14115b10e78f1045e67c3d48c11d02284a6a9e5743d7ff013b7f323d56c5f7f5';old_sha256=@('a7ce7fc95e47d78e0e9f78c4caccca0bff7e0acab52ab9cfa6ea0fa564e0de35','c44a6f08f6fa467da519599086f5327d845cda1bde469bd9dbca4f4c87e63252');allow_absent=$false},
-    [pscustomobject]@{path='web/voice/live.js';size=31361L;sha256='c7ddc4084cefa656ff3c4618ca73a3cc39ae0b51c58698de2f6496aee4aa9a93';old_sha256=@('cf55635cf968ab5dc131cb13b777839d07fb8342fd98a59c0a39cde0cdc4f757','ecfbbda82425bb8dfc1656243bbb154825a5f4e1f557caf4f27828b3af57a8cc');allow_absent=$false}
+    [pscustomobject]@{path='MarVoiReflex.exe';size=15304705L;sha256='76d20fbb62db2bc2b5751b05892fbacf75750166b8d5b289ec714e976500636d';old_sha256=@('94b7fcfcd768dcc6c556833098f28d96ae0b6c541c6cc2db758159b9475706b9','b8a91c564b10b774eace721440af54cf3958602e96f90a4535efea777554775f','c82409dda8b3e04aa02f9a9d3e897f524dfe7ff077ccb4f034c34801d20cc74a');allow_absent=$false},
+    [pscustomobject]@{path='voice_runtime/base_library.zip';size=1332808L;sha256='0d33758b2161b323c8ef568e35397d5c921372ee9fdd484100cd330bbece2687';old_sha256=@('73357d404c0b934b43ba4d003132bf1fde2c6da1c7f2db8648805b2b034f6582','772e5da6ba515e7dcbee7c039ffcb9fa1d8a491f7f96501772786498e98c81eb','c591cf873f32ce28e7dc6d9f207163cf83274751a4eaa0dc48f99a3ee9229db5');allow_absent=$false},
+    [pscustomobject]@{path='web/voice/index.html';size=7349753L;sha256='6f857ae183527ce7fda403c38ca60d394f88b40f0a1a3fa87ca8100606fd52a2';old_sha256=@('14115b10e78f1045e67c3d48c11d02284a6a9e5743d7ff013b7f323d56c5f7f5','a7ce7fc95e47d78e0e9f78c4caccca0bff7e0acab52ab9cfa6ea0fa564e0de35','c44a6f08f6fa467da519599086f5327d845cda1bde469bd9dbca4f4c87e63252');allow_absent=$false},
+    [pscustomobject]@{path='web/voice/live.js';size=34372L;sha256='d3e33fb41632b1263ae107efeadeb46272725e0b20462b9e06d07647ab4f6607';old_sha256=@('c7ddc4084cefa656ff3c4618ca73a3cc39ae0b51c58698de2f6496aee4aa9a93','cf55635cf968ab5dc131cb13b777839d07fb8342fd98a59c0a39cde0cdc4f757','ecfbbda82425bb8dfc1656243bbb154825a5f4e1f557caf4f27828b3af57a8cc');allow_absent=$false}
 )
 function Assert-RegularPath([string]$Path,[string]$Root) {
     $full=[IO.Path]::GetFullPath($Path)
@@ -105,9 +106,9 @@ function Test-PatchCurrent([string]$App) {
     return $true
 }
 function Apply-LocalPatch([string]$App){
-    if(Test-PatchCurrent $App){Write-Host '本機搜尋版本已校驗。';return}
+    if(Test-PatchCurrent $App){Write-Host '語音交辦及檔案取得版本已校驗。';return}
     $appExe=Join-Path $App 'MarVoiReflex.exe'
-    if(-not((Test-Asset $appExe $baseExeSha) -or (Test-Asset $appExe $priorExeSha) -or (Test-Asset $appExe $exeSha))){throw '原始版本不相容，請重新安裝。'}
+    if(-not((Test-Asset $appExe $baseExeSha) -or (Test-Asset $appExe $priorExeSha) -or (Test-Asset $appExe $localSearchExeSha) -or (Test-Asset $appExe $exeSha))){throw '原始版本不相容，請重新安裝。'}
     foreach($proc in @(Get-Process -Name MarVoiReflex -ErrorAction SilentlyContinue)){
         if(-not $proc.Path -or [string]::Equals($proc.Path,$appExe,[StringComparison]::OrdinalIgnoreCase)){throw '請先關閉 MarVoiReflex 及本機介面，再重新執行更新工具。'}
     }
@@ -150,7 +151,7 @@ function Apply-LocalPatch([string]$App){
         foreach($item in $replaced){try{if($item.existed){Copy-Item -LiteralPath $item.backup -Destination $item.dest -Force}elseif(Test-Path -LiteralPath $item.dest){Remove-Item -LiteralPath $item.dest -Force}}catch{Write-Host ('還原失敗，備份位於：'+$item.backup) -ForegroundColor Red}}
         throw
     }
-    Write-Host '已更新本機檔案搜尋功能；既有素材、模型及使用者資料均保留。' -ForegroundColor Green
+    Write-Host '已更新語音交辦與直接取得檔案功能；既有素材、模型及使用者資料均保留。' -ForegroundColor Green
 }
 
 try{
@@ -161,7 +162,7 @@ try{
     }
     $log=Join-Path $root ('install-'+$stamp+'.log')
     try{Start-Transcript -LiteralPath $log -Force | Out-Null;$transcript=$true}catch{}
-    Write-Host 'MarVoiReflex 0.3.0 | Installer r2 | Windows x64'
+    Write-Host 'MarVoiReflex 0.3.1 | Installer r2 | Windows x64'
     $arch=$env:PROCESSOR_ARCHITECTURE
     if($env:PROCESSOR_ARCHITEW6432){$arch=$env:PROCESSOR_ARCHITEW6432}
     if($arch -ne 'AMD64'){throw '此版本僅支援 Windows Intel / AMD x64。'}
@@ -175,7 +176,7 @@ try{
         if($existing -and (Test-Path -LiteralPath $existing -PathType Container)){
             $oldExe=Join-Path $existing 'MarVoiReflex.exe'
             $g=Join-Path $existing 'assets\gemma4-e2b'
-            if(((Test-Asset $oldExe $baseExeSha) -or (Test-Asset $oldExe $priorExeSha) -or (Test-Asset $oldExe $exeSha)) -and (Test-Asset (Join-Path $g $model) $modelSha 3349516256L) -and (Test-Asset (Join-Path $g $projector) $projectorSha 986833664L) -and (Test-Path (Join-Path $g 'runtime\llama-server.exe')) -and (Test-Path (Join-Path $existing 'web\voice\index.html'))){
+            if(((Test-Asset $oldExe $baseExeSha) -or (Test-Asset $oldExe $priorExeSha) -or (Test-Asset $oldExe $localSearchExeSha) -or (Test-Asset $oldExe $exeSha)) -and (Test-Asset (Join-Path $g $model) $modelSha 3349516256L) -and (Test-Asset (Join-Path $g $projector) $projectorSha 986833664L) -and (Test-Path (Join-Path $g 'runtime\llama-server.exe')) -and (Test-Path (Join-Path $existing 'web\voice\index.html'))){
                 Apply-LocalPatch $existing
                 Write-Host '現有安裝已通過校驗。'
                 Start-Process -FilePath $oldExe -WorkingDirectory $existing

@@ -7,7 +7,7 @@ def build():
     text=lambda name:(ui/name).read_text(encoding='utf-8')
     uri=lambda name,mime:'data:'+mime+';base64,'+base64.b64encode((ui/name).read_bytes()).decode()
     css=text('app.css').replace('__FONT_URI__',uri('NotoSansTC.woff2','font/woff2'))
-    csp="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'none'; form-action 'none'"
+    csp="default-src 'none'; img-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'none'; form-action 'none'"
     core=text('rounded-icons.js')+'\n'+text('core.js')
     controllers='<script>'+core+'</script><script>window.MARVOI_KEY="__SESSION_TOKEN__";window.MARVOI_SHELL="__NATIVE_SHELL__";</script><script src="/live.js"></script>'
     for name in ['sidebar.js','rounded-ui.js','composer.js','native-shell.js']:controllers+='<script>'+text(name)+'</script>'

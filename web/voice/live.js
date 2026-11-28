@@ -45,7 +45,7 @@ async function changeLocalScope(mode){
   if(mode==='drives'&&!window.confirm('授權搜尋本機固定及外接磁碟中目前帳號可讀取的常見文件、圖片和媒體。排除系統與常見敏感位置；資料不會傳至雲端。此功能為唯讀。是否啟用？'))return;
   if(mode===null&&!window.confirm('停用本機搜尋並清除本機檔案索引及結果，不會刪除原始檔案。是否繼續？'))return;
   try{
-    paintLocalStatus(await api('/api/local/scope',{mode,consent:mode!==null}));typedSequence++;
+    paintLocalStatus(await api('/api/local/scope',{mode,consent:mode!==null}));typedSequence++;$('callFiles').replaceChildren();$('callFiles').hidden=true;if(fileDialog.open)fileDialog.close();
     $('localNext').hidden=true;$('localPreview').hidden=true;$('localPreview').textContent='';
     if(!mode){$('files').replaceChildren();$('files').hidden=true;$('empty').hidden=false;showTaskStatus('已停用本機搜尋並清除索引。');}
     else showTaskStatus('已授權本機檔案搜尋。索引建立時也可以搜尋已完成的部分。');
@@ -61,24 +61,52 @@ $('localNext').onclick=async()=>{
   try{const v=await api('/api/local/next');if(seq===typedSequence)applyTask(v.result);}catch(e){if(seq===typedSequence)showTaskStatus(shortError(e));}
   finally{taskBusy=false;syncTextControls();$('localNext').disabled=false;}
 };
-function renderLocalResults(result){
-  const host=$('files');host.replaceChildren();
-  for(const asset of result.local_results){
-    const row=document.createElement('div');row.className='file';
+let filePreviewUrl=null;
+function clearFilePreview(){
+  if(filePreviewUrl){URL.revokeObjectURL(filePreviewUrl);filePreviewUrl=null;}
+  $('localPreview').replaceChildren();$('localPreview').hidden=true;
+}
+async function resultFile(asset,action){
+  const response=await fetch('/api/results/file',{method:'POST',headers:{'X-MarVoi-Key':liveKey,'Content-Type':'application/json'},body:JSON.stringify({source:asset.source,id:asset.id,action})});
+  if(!response.ok){const value=await response.json();throw new Error(value.error||'檔案無法取得。');}
+  if(action==='open'||action==='text')return response.json();
+  return response.blob();
+}
+function showFileMessage(text){
+  if(mode==='call'){$('callTaskStatus').textContent=text;$('callTaskStatus').hidden=false;}
+  else showTaskStatus(text);
+}
+function renderFileCards(rows,host){
+  host.replaceChildren();
+  for(const asset of rows){
+    const row=document.createElement('div');row.className='file result-file-card';
     const body=document.createElement('div');body.className='file-detail';
     const name=document.createElement('div');name.className='filename';name.textContent=asset.name;
     const path=document.createElement('div');path.className='path';path.style.overflowWrap='anywhere';path.textContent=asset.path;
     const reason=document.createElement('div');reason.className='path';reason.textContent=(asset.match==='uncertain'?'需確認 · ':'')+(asset.reason||'');
     const actions=document.createElement('div');actions.className='local-result-actions';
-    const reveal=document.createElement('button');reveal.className='secondary';reveal.textContent='顯示原始位置';reveal.onclick=async()=>{try{await api('/api/local/reveal',{id:asset.id});}catch(e){showTaskStatus(shortError(e));}};actions.append(reveal);
-    if(asset.previewable){const read=document.createElement('button');read.className='ghost';read.textContent='文字預覽';read.onclick=async()=>{try{const v=await api('/api/local/preview',{id:asset.id});$('localPreview').textContent=v.name+'\\n\\n'+v.text;$('localPreview').hidden=false;$('localPreview').scrollIntoView({block:'nearest'});}catch(e){showTaskStatus(shortError(e));}};actions.append(read);}
+    function add(label,fn,cls='secondary'){const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){showFileMessage(shortError(e));}finally{b.disabled=false;}};actions.append(b);}
+    if(asset.can_open)add('開啟原檔',async()=>{await resultFile(asset,'open');showFileMessage('已開啟：'+asset.name);});
+    if(asset.can_download)add('下載檔案',async()=>{const blob=await resultFile(asset,'download');const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=asset.name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);});
+    if(asset.image_preview)add('圖片預覽',async()=>{const blob=await resultFile(asset,'thumbnail');if(!row.isConnected)return;clearFilePreview();filePreviewUrl=URL.createObjectURL(blob);const dialog=$('resultPreviewDialog');const image=$('resultPreviewImage');image.src=filePreviewUrl;image.alt=asset.name;image.hidden=false;$('resultPreviewText').hidden=true;$('resultPreviewTitle').textContent=asset.name;if(!dialog.open)dialog.showModal();},'ghost');
+    if(asset.previewable)add('文字預覽',async()=>{const v=await resultFile(asset,'text');if(!row.isConnected)return;clearFilePreview();$('resultPreviewTitle').textContent=v.name;$('resultPreviewImage').hidden=true;$('resultPreviewText').textContent=v.text;$('resultPreviewText').hidden=false;if(!$('resultPreviewDialog').open)$('resultPreviewDialog').showModal();},'ghost');
+    if(asset.source==='local')add('所在資料夾',()=>api('/api/local/reveal',{id:asset.id}),'ghost');
     body.append(name,path,reason,actions);row.append(body);host.append(row);
   }
-  host.hidden=!result.local_results.length;$('empty').hidden=!!result.local_results.length;
+  host.hidden=!rows.length;
+}
+const fileDialog=document.createElement('dialog');fileDialog.id='resultPreviewDialog';fileDialog.className='result-preview-dialog';
+fileDialog.innerHTML='<div class="metrics-head"><strong id="resultPreviewTitle"></strong><button id="resultPreviewClose" class="icon-btn" aria-label="關閉">×</button></div><img id="resultPreviewImage" hidden><pre id="resultPreviewText" hidden></pre>';
+document.body.append(fileDialog);$('resultPreviewClose').onclick=()=>fileDialog.close();
+fileDialog.addEventListener('close',()=>{if(filePreviewUrl){URL.revokeObjectURL(filePreviewUrl);filePreviewUrl=null;}$('resultPreviewImage').removeAttribute('src');$('resultPreviewText').textContent='';});
+function renderLocalResults(result){
+  renderFileCards(result.file_results||[],$('files'));
+  $('empty').hidden=!!(result.file_results||[]).length;
   $('localNext').hidden=!result.local_more;
 }
 function renderSearchResults(result){
   if(result.local_results){renderLocalResults(result);return;}
+  if(result.file_results){renderFileCards(result.file_results,$('files'));$('empty').hidden=!!result.file_results.length;return;}
   const rows=result.visual_results?[...result.visual_results.yes.map(a=>({...a,label:'符合'})),...result.visual_results.uncertain.map(a=>({...a,label:'需確認'}))]:(result.selected||[]).map(name=>({name,label:'搜尋結果'}));
   const host=$('files');host.replaceChildren();
   for(const asset of rows){const row=document.createElement('div');row.className='file';const body=document.createElement('div');body.className='file-detail';const name=document.createElement('div');name.className='filename';name.textContent=asset.name;const detail=document.createElement('div');detail.className='path';detail.textContent=asset.label+(asset.reason?' · '+asset.reason:'');body.append(name,detail);row.append(body);host.append(row);}
@@ -134,16 +162,18 @@ async function flushVoice(force=false){
     while(true){try{value=await api('/api/voice/turn',wav,{headers:{'Content-Type':'audio/wav','X-Voice-Mode':modeAtStart,'X-Call-ID':id},signal:controller.signal});break;}catch(e){if(e.status===409&&e.message==='BUSY'&&performance.now()-retryBegan<8000){await new Promise(r=>setTimeout(r,180));continue;}throw e;}}
     if(!callActive||epoch!==voiceRuntime.epoch||id!==voiceRuntime.callId)return;
     if(value.status==='cancelled'||value.status==='no_speech'){voiceRuntime.busy=false;if(value.status==='no_speech')$('callTranscript').textContent=language==='zh'?'沒有辨識到清楚語音，請再說一次。':'No clear speech detected. Try again.';liveStatus(callMuted?'muted':'listening');return;}
-    if(value.status==='transcript_review'){
-      $('callTranscript').textContent=value.recognized;
-      await endCall();setMode('task');window.MarVoiSidebar?.close();
-      const input=$('taskInput');
-      if(input.value.trim())showTaskStatus('語音辨識結果：'+value.recognized+'。輸入框已有文字，未覆蓋原任務。');
-      else{input.value=value.recognized;showTaskStatus(value.low_confidence?('語音辨識需要確認。'+(value.alternative?'另一引擎結果：'+value.alternative+'。':'')+'請校正文字後再送出。'):'已辨識語音，請確認或編輯文字後送出。');}
-      input.focus();return;
-    }
     $('callTranscript').textContent=value.recognized;
-    if(modeAtStart==='chat'){message('user',value.recognized);message('assistant',value.result.text);}else{applyTask(value.result);if(value.result.status==='preview')setMode('task');}
+    if(value.result?.mode==='task'){
+      applyTask(value.result);
+      renderFileCards(value.result.file_results||[],$('callFiles'));
+      const result=value.result;
+      $('callTaskStatus').textContent=result.status==='preview'?'已產生分類預覽，尚未搬移檔案。':result.status==='searched'||result.status==='listed'?'找到 '+(result.selected||[]).length+' 個確定符合的檔案。'+(result.local_more?' 還有下一批候選。':''):result.text;
+      $('callTaskStatus').hidden=false;
+      $('callTaskView').hidden=!['preview','searched','listed','read','indexed','completed'].includes(result.status);
+    }else if(value.result){
+      $('callTaskStatus').hidden=true;$('callTaskView').hidden=true;$('callFiles').replaceChildren();$('callFiles').hidden=true;
+      message('user',value.recognized);message('assistant',value.result.text);
+    }
     if(!value.audio){liveStatus(callMuted?'muted':'listening');return;}
     const response=await fetch(value.audio.url,{headers:{'X-MarVoi-Key':liveKey},signal:controller.signal});if(!response.ok)throw new Error('語音檔讀取失敗。');const decodeBegan=performance.now();const audio=await voiceRuntime.ctx.decodeAudioData(await response.arrayBuffer());
     if(!callActive||epoch!==voiceRuntime.epoch)return;
@@ -170,7 +200,7 @@ async function flushVoice(force=false){
   finally{if(epoch===voiceRuntime.epoch){if(!voiceRuntime.speaking)voiceRuntime.abort=null;voiceRuntime.busy=false;if(callActive&&!voiceRuntime.speaking&&voiceRuntime.state!=='error')liveStatus(callMuted?'muted':'listening');}}
 }
 startCall=async function(){
-  if(!liveReady||callActive)return;const epoch=++voiceRuntime.epoch;callActive=true;callMuted=false;callEnded=false;liveStatus('loading');$('callTranscript').textContent='';
+  if(!liveReady||callActive)return;const epoch=++voiceRuntime.epoch;callActive=true;callMuted=false;callEnded=false;liveStatus('loading');$('callTranscript').textContent='';$('callTaskStatus').hidden=true;$('callTaskView').hidden=true;$('callFiles').replaceChildren();$('callFiles').hidden=true;
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});if(!callActive||epoch!==voiceRuntime.epoch){stream.getTracks().forEach(t=>t.stop());return;}voiceRuntime.stream=stream;
     const ctx=new AudioContext({sampleRate:16000});voiceRuntime.ctx=ctx;await ctx.resume();await ctx.audioWorklet.addModule('/audio-worklet.js');const source=ctx.createMediaStreamSource(stream),node=new AudioWorkletNode(ctx,'marvoi-pcm'),sink=ctx.createGain();sink.gain.value=0;source.connect(node);node.connect(sink);sink.connect(ctx.destination);node.port.onmessage=e=>audioFrame(e.data);voiceRuntime.source=source;voiceRuntime.node=node;voiceRuntime.sink=sink;
@@ -185,6 +215,7 @@ endCall=async function(){
   voiceRuntime.speaking=false;voiceRuntime.busy=false;voiceRuntime.stream?.getTracks().forEach(t=>t.stop());voiceRuntime.stream=null;voiceRuntime.node?.disconnect();voiceRuntime.source?.disconnect();voiceRuntime.sink?.disconnect();voiceRuntime.node=null;voiceRuntime.source=null;voiceRuntime.sink=null;const ctx=voiceRuntime.ctx;voiceRuntime.ctx=null;resetCapture();liveStatus(was?'ended':'idle');if(ctx)await ctx.close().catch(()=>{});if(was)api('/api/call/end').catch(()=>{});
 };
 function switchCallMode(next){if(next===callMode)return;if(voiceRuntime.ready)interruptReply();callMode=next;updateCallUI();}
+$('callTaskView').onclick=()=>{setMode('task');window.MarVoiSidebar?.close();};
 $('callToggle').onclick=()=>callActive?endCall():startCall();$('callMute').onclick=()=>{if(!callActive||!voiceRuntime.ready)return;callMuted=!callMuted;voiceRuntime.stream?.getAudioTracks().forEach(t=>t.enabled=!callMuted);resetCapture();liveStatus(callMuted?'muted':'listening');};$('callDemo').onclick=()=>voiceRuntime.busy||voiceRuntime.speaking?interruptReply():flushVoice(true);$('callChatMode').onclick=()=>switchCallMode('chat');$('callTaskMode').onclick=()=>switchCallMode('task');
 
 function renderTaskItems(items){
@@ -195,7 +226,7 @@ function applyTask(result){
   if(result.preserve_pending){$('taskFeedback').textContent=result.text;return;}
   livePlan=result.status==='preview'?result.plan_id:null;pending=!!livePlan;const items=result.items||[];renderTaskItems(items);$('files').hidden=!items.length;$('empty').hidden=!!items.length;$('previewBadge').hidden=!pending;$('previewBadge').textContent=items.length+(language==='zh'?' 份':' files');$('confirmation').hidden=!pending;$('taskFeedback').textContent=result.status==='preview'?'':result.text;
   if(result.status!=='preview')$('taskFeedback').title=result.text;
-  if(result.status==='searched'||result.status==='listed')renderSearchResults(result);
+  if(['searched','listed','read'].includes(result.status))renderSearchResults(result);
 }
 sendChat=async function(){const input=$('chatInput'),text=input.value.trim();if(!text||voiceRuntime.textBusy)return;
   if(!liveReady){message('assistant',loadingText);return;}

@@ -5,7 +5,7 @@
 ## 架構與啟用方式
 
 - 預設保留 Gemma 4 E2B Vision、Faster Whisper Small INT8、Windows SAPI 及本機 MCP。沒有 API Key 或雲端推論需求。
-- Moonshine Mandarin Tiny Streaming：選用的本機快速語音引擎，安裝後優先提供增量轉錄與最終辨識；任務轉錄以 Whisper 複核，不一致時列出替代文字，使用者確認後才交辦。Silero VAD 過濾無語音的片段，語音引擎不可用時保留 Whisper。
+- Moonshine Mandarin Tiny Streaming：選用的本機快速語音引擎，安裝後優先提供增量轉錄與最終辨識；任務轉錄以 Whisper 複核，低信心時請使用者重說；v0.3.1 高信心語音任務直接交辦，工作區檔案搬移仍須確認。Silero VAD 過濾無語音的片段，語音引擎不可用時保留 Whisper。
 - E4B：選用的本機進階文字模型；複雜對話及任務解析重試可經過進階端點。端點僅允許 127.0.0.1 HTTP，失敗回退至 E2B；模型沒有直接操作檔案的權限。
 - 回覆語音：第一句完成合成即可播放，其餘句子由前端預取。取消會使後續分段失效。目前合成引擎仍為 Windows SAPI；此處為分段合成，不是 LLM token streaming，也不是神經 TTS。
 - 素材索引：在任務頁輸入「建立素材索引」或「更新素材索引」，每次最多新增 40 張。SQLite 按檔案 SHA-256 儲存描述、選用 OCR 文字與 EmbeddingGemma 向量。向量排序僅決定搜尋順序，不移除候選，也不授權任何檔案修改。圖片搜尋的確定結果另有本機持久化快取。

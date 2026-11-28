@@ -233,7 +233,7 @@ class Flow:
      result={'status':r['action'],'text':reply}
     elif r['action']=='refuse':result={'status':'refused','text':'這個操作超出授權的 materials 範圍，不能執行。'}
     elif r['action']=='list':
-     folder=self.source_folder(user,r['action']);assets=self.catalog(folder);result={'status':'listed','text':'\n'.join(a['name'] for a in assets)+f'\n總數：{len(assets)}個檔案。','selected':[a['name'] for a in assets],'grounded_folder':folder}
+     folder=self.source_folder(user,r['action']);assets=self.catalog(folder);result={'status':'listed','text':'\n'.join(a['name'] for a in assets)+f'\n總數：{len(assets)}個檔案。','selected':[a['name'] for a in assets],'grounded_folder':folder,'_file_refs':assets}
     else:
      assets=self.catalog(self.source_folder(user,r['action']))
      if r['action']=='read':
@@ -242,9 +242,9 @@ class Flow:
       if named[0]['type']!='text':raise IntentError('此功能只讀文字素材')
       data=self.call('read_file',{'path':named[0]['path']})
       if data['is_error']:raise MCPError(data['text'])
-      result={'status':'read','text':data['text'],'selected':[named[0]['name']]}
+      result={'status':'read','text':data['text'],'selected':[named[0]['name']],'_file_refs':named}
      elif r['action']=='search':
-      selected=self.query(r,user,assets);result={'status':'searched','text':'\n'.join(a['name'] for a in selected)+f'\n總數：{len(selected)}個符合條件的檔案。','selected':[a['name'] for a in selected]}
+      selected=self.query(r,user,assets);result={'status':'searched','text':'\n'.join(a['name'] for a in selected)+f'\n總數：{len(selected)}個符合條件的檔案。','selected':[a['name'] for a in selected],'_file_refs':selected}
      else:result=self.propose(r,user,assets)
     break
    except ScopeError as error:entry['validation_error']=str(error);result={'status':'refused','text':'超出授權範圍，不能執行：'+str(error)};break

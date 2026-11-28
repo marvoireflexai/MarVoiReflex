@@ -130,6 +130,15 @@ def main():
                 if path=='/api/local/next':self.reply(200,{'result':runtime.local_continue()});return
                 if path=='/api/local/preview':self.reply(200,runtime.local_files.preview(v.get('id')));return
                 if path=='/api/local/reveal':self.reply(200,runtime.local_files.reveal(v.get('id')));return
+                if path=='/api/results/file':
+                    action=v.get('action');result=runtime.result_files.get(v.get('source'),v.get('id'),action)
+                    if 'data' not in result:self.reply(200,result);return
+                    data=result['data'];self.send_response(200);self.send_header('Content-Type',result['mime']);self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-store')
+                    if action=='download':self.send_header('Content-Disposition',"attachment; filename*=UTF-8''"+urllib.parse.quote(result['name'],safe=''))
+                    self.send_header('Content-Length',str(len(data)));self.end_headers()
+                    try:self.wfile.write(data)
+                    except (BrokenPipeError,ConnectionResetError,ConnectionAbortedError):pass
+                    return
                 if path=='/api/client/attach':
                     if close_timer:close_timer.cancel();close_timer=None
                     self.reply(200,{'ok':True});return

@@ -7,11 +7,12 @@ from backend import Services,write_json
 from voice_engine import VoiceEngine
 from model_router import complete,complex_text,local_endpoint
 from local_files import LocalFiles,wants_search,workspace_request,blocked_request,parse_query,IMAGE as LOCAL_IMAGES
+from result_files import ResultFiles,capabilities
 
 class Runtime:
     def __init__(self):
         self.root=data_root();self.root.mkdir(parents=True,exist_ok=True);self.services=Services();self.voice=VoiceEngine();self.ready=False;self.error=None;self.phase='正在準備本機模型…';self.op_lock=threading.RLock();self.state_lock=threading.RLock();self.call_id=None;self.generation=0;self.speech_chunks=None;self.speech_lock=threading.RLock();self.chat_history=[];self.close_timer=None;self.client_attached=False
-        self.local_files=LocalFiles(self.root,excluded=(bundle_root(),));self.local_vision=None
+        self.local_files=LocalFiles(self.root,excluded=(bundle_root(),));self.local_vision=None;self.result_files=ResultFiles(self.root,self.local_files)
     def start(self):
         try:
             self.services.start(lambda phase:setattr(self,'phase',phase))
@@ -62,6 +63,11 @@ class Runtime:
         self.chat_history.extend([{'role':'user','content':user},{'role':'assistant','content':text}]);self.chat_history=self.chat_history[-10:]
         return {'status':'chat','mode':'chat','text':text,'executed':False,'llm_s':time.perf_counter()-t,'model_route':route,'truncated':choice.get('finish_reason')=='length'}
     def task(self,text):
+        result=self._task(text)
+        refs=result.pop('_file_refs',None)
+        if refs is not None:self.result_files.attach(result,refs)
+        return result
+    def _task(self,text):
         from flow import paths_in,ScopeError
         from semantics import analyze
         task=self.assistant.task;task.clock=date.today();task.planner.clock=date.today()
@@ -71,6 +77,8 @@ class Runtime:
         if normalized in ['取消','取消操作','不要執行','先不要動','先取消']:
             if task.pending:return dict(task.cancel(task.pending['id']),mode='task')
             return {'status':'cancelled','mode':'task','text':'沒有待確認的操作。'}
+        if normalized in ['繼續搜尋','繼續搜尋下一批','搜尋下一批','下一批'] and self.local_files.mode:
+            return self.local_search('',True)
         if normalized in ['建立素材索引','更新素材索引','建立圖片索引','更新圖片索引']:
             if not self.semantic_assets:return {'status':'clarify','mode':'task','text':'素材索引尚未就緒。','preserve_pending':True}
             return self.semantic_assets.build(task.catalog(),task.checked)
@@ -89,7 +97,10 @@ class Runtime:
             if task.pending:task.cancel(task.pending['id'])
             assets=task.catalog()
             if self.semantic_assets:assets=self.semantic_assets.rank(text,assets)
-            return self.vision_search.search(text,assets,task.checked)
+            result=self.vision_search.search(text,assets,task.checked)
+            matches={x['path'] for m in ('yes','uncertain') for x in result.get('visual_results',{}).get(m,[])}
+            result['_file_refs']=[a for a in assets if a['path'] in matches]
+            return result
         spec=analyze(text,date.today(),paths_in(text))
         if spec['actions'] is None:return {'status':'clarify','mode':'task','text':'請說要做的素材任務。','preserve_pending':True}
         user=text if spec['resource'] else 'materials：'+text
@@ -124,7 +135,14 @@ class Runtime:
             # Search cannot execute or modify files. Invalidate any old workspace confirmation.
             task=self.assistant.task
             if task.pending:task.cancel(task.pending['id'])
-            return self.local_files.search(text,visual,self.local_vision.classify if self.local_vision else None,continuation)
+            result=self.local_files.search(text,visual,self.local_vision.classify if self.local_vision else None,continuation)
+            with self.local_files.lock:
+                rows=[]
+                for a in result.get('local_results',[]):
+                    try:rows.append(dict(a,source='local',**capabilities(self.local_files._result_path(a['id']))))
+                    except (OSError,ValueError):continue
+                result['file_results']=rows
+            return result
         except (ValueError,PermissionError) as exc:return {'status':'clarify','mode':'task','text':str(exc),'preserve_pending':True}
     def set_local_scope(self,mode):
         result=self.local_files.set_scope(mode)
@@ -141,8 +159,12 @@ class Runtime:
     def spoken(result):
         if result['mode']=='chat':return result['text']
         status=result['status'];n=len(result.get('selected',[]))
-        if status=='preview':return f'找到{n}份符合的素材。請檢查預覽，按確認後才會整理。'
-        if status in ['searched','listed']:return f'找到{n}個檔案，清單已顯示。'
+        if status=='preview':return f'找到{len(result.get("items",[]))}份符合的素材。請查看任務預覽，按確認後才會整理。'
+        if status in ['searched','listed']:
+            if result.get('local_results') is not None:
+                extra='，另有候選可繼續搜尋' if result.get('local_more') else ''
+                return f'這一批找到{n}個確定符合的檔案{extra}。請查看任務結果。'
+            return f'找到{n}個檔案，清單已顯示。'
         if status=='completed':return f'已整理{result.get("moved",0)}個檔案，驗證通過。'
         if status=='read':return result['text'][:150]
         return result['text'][:140]
@@ -176,10 +198,16 @@ class Runtime:
             self.speech_chunks={'call_id':call_id,'generation':generation,'turn_id':turn_id,'texts':chunks,'audio':{}}
         try:return self.voice_chunk(call_id,turn_id,0),len(chunks)
         except Exception:return None,0
+    @staticmethod
+    def is_voice_task(text):
+        # Chat can route explicit file commands; questions about how to work stay in chat.
+        if re.search(r'怎麼|如何|為什麼|什麼意思|是否可以|能不能|可以嗎|教我',text):return False
+        if text.strip().rstrip('。！!') in ('繼續搜尋','繼續搜尋下一批','搜尋下一批','下一批'):return True
+        return bool(re.search(r'^(?:(?:請|麻煩|幫我|可以幫我)\s*)*(?:找出|找一下|找找|找|搜尋|搜索|尋找|查找|列出|讀取|讀出|查看|整理|分類|預覽|搬移|移動|複製|刪除|改名)',text.strip()) and re.search(r'檔案|文件|資料夾|素材|圖片|照片|相片|圖檔|文案|桌面|下載|電腦|磁碟|PDF|TXT|\.\w{2,5}\b',text,re.I))
     def turn(self,content,mode,call_id):
         if mode not in ['chat','task']:raise ValueError('請選擇聊天或交辦。')
         with self.state_lock:
-            if call_id!=self.call_id:raise PermissionError('通話已結束。')
+            if not call_id or call_id!=self.call_id:raise PermissionError('通話已結束。')
             generation=self.generation
         if not self.op_lock.acquire(blocking=False):raise RuntimeError('BUSY')
         began=time.perf_counter();turn_id=secrets.token_hex(12)
@@ -187,9 +215,20 @@ class Runtime:
             asr=self.voice.transcribe(content,verify=(mode=='task'))
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
             if not asr['text']:return {'status':'no_speech','turn_id':turn_id,'metrics':{'asr_s':asr['asr_s'],'server_total_s':time.perf_counter()-began}}
-            if mode=='task':
-                return {'status':'transcript_review','turn_id':turn_id,'recognized':asr['text'],'low_confidence':asr.get('low_confidence',False),'alternative':asr.get('alternative'),'asr':asr.get('engine')}
-            start=time.perf_counter();result=self.chat(asr['text']);processing=time.perf_counter()-start
+            # Automatic read/preview only. All changes still require existing plan confirmation.
+            task_mode=mode=='task' or self.is_voice_task(asr['text'])
+            if task_mode and mode=='chat' and asr.get('engine')=='moonshine':
+                asr=self.voice.transcribe(content,verify=True)
+                if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
+            start=time.perf_counter()
+            if task_mode:
+                mode='task'
+                if not asr.get('text') or asr.get('low_confidence'):
+                    result={'status':'clarify','mode':'task','text':'剛才的指令沒有辨識清楚，請再說一次完整的任務。我還沒有執行任何操作。','preserve_pending':True}
+                else:
+                    result=self.task(asr['text'])
+            else:result=self.chat(asr['text'])
+            processing=time.perf_counter()-start
             if not self.current(call_id,generation):return {'status':'cancelled','turn_id':turn_id}
             audio,chunk_count=self.begin_speech(self.spoken(result),call_id,generation,turn_id)
             metrics={'asr_s':asr['asr_s'],'assistant_s':processing,'tts_s':audio['tts_s'] if audio else 0,'server_total_s':time.perf_counter()-began,'input_audio_s':asr['audio_seconds'],'reply_audio_s':audio['audio_seconds'] if audio else 0}
